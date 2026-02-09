@@ -39,8 +39,8 @@ export const countryFlags: Record<string, string> = {
   "Bélgica": "🇧🇪",
   "Croácia": "🇭🇷",
   "Dinamarca": "🇩🇰",
-  "Suíca": "🇨🇭",
-  "Austria": "🇦🇹",
+  "Suíça": "🇨🇭",
+  "Áustria": "🇦🇹",
   "Polônia": "🇵🇱",
   "Suécia": "🇸🇪",
   "Ucrânia": "🇺🇦",
@@ -61,7 +61,7 @@ export const countryFlags: Record<string, string> = {
   "Argélia": "🇩🇿",
   "Camarões": "🇨🇲",
   "Gana": "🇬🇭",
-  "Costa do Marfin": "🇨🇮",
+  "Costa do Marfim": "🇨🇮",
   "Mali": "🇲🇱",
   "Burkina Faso": "🇧🇫",
   "África do Sul": "🇿🇦",
@@ -70,7 +70,7 @@ export const countryFlags: Record<string, string> = {
   
   // Ásia
   "Japão": "🇯🇵",
-  "Coréia do Sul": "🇰🇷",
+  "Coreia do Sul": "🇰🇷",
   "Irã": "🇮🇷",
   "Arábia Saudita": "🇸🇦",
   "Austrália": "🇦🇺",

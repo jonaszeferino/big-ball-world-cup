@@ -6,6 +6,7 @@ import { MatchCard } from "@/components/match-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
+import { getCountryFlag } from "@/lib/country-flags"
 
 interface Team {
   id: string
@@ -178,6 +179,7 @@ export default function MatchesPage() {
                                     </td>
                                     <td className="px-3 py-2.5">
                                       <div className="flex items-center gap-2">
+                                        <span className="text-2xl" title={team.name}>{getCountryFlag(team.name)}</span>
                                         <span className="font-semibold text-foreground">{team.code}</span>
                                         <span className="text-muted-foreground">{team.name}</span>
                                       </div>

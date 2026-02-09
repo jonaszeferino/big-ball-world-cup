@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2 } from "lucide-react"
+import { getCountryFlag } from "@/lib/country-flags"
 
 interface Team {
   id: string
@@ -273,6 +274,7 @@ export function AdminTeams() {
                       variant="secondary"
                       className="flex items-center gap-2 px-3 py-1.5 text-sm"
                     >
+                      <span className="text-lg" title={team.name}>{getCountryFlag(team.name)}</span>
                       <span className="font-bold text-secondary-foreground">{team.code}</span>
                       <span className="text-secondary-foreground">{team.name}</span>
                       <button

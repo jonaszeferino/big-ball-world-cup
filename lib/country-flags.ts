@@ -1,0 +1,88 @@
+export const countryFlags: Record<string, string> = {
+  // América do Sul
+  "Argentina": "🇦🇷",
+  "Brasil": "🇧🇷",
+  "Uruguai": "🇺🇾",
+  "Paraguai": "🇵🇾",
+  "Chile": "🇨🇱",
+  "Colômbia": "🇨🇴",
+  "Equador": "🇪🇨",
+  "Peru": "🇵🇪",
+  "Venezuela": "🇻🇪",
+  "Bolívia": "🇧🇴",
+  
+  // América do Norte e Central
+  "México": "🇲🇽",
+  "Estados Unidos": "🇺🇸",
+  "EUA": "🇺🇸",
+  "Canadá": "🇨🇦",
+  "Costa Rica": "🇨🇷",
+  "Jamaica": "🇯🇲",
+  "Panamá": "🇵🇦",
+  "Honduras": "🇭🇳",
+  "El Salvador": "🇸🇻",
+  "Guatemala": "🇬🇹",
+  "Trinidad e Tobago": "🇹🇹",
+  "Haiti": "🇭🇹",
+  
+  // Europa
+  "Alemanha": "🇩🇪",
+  "Espanha": "🇪🇸",
+  "França": "🇫🇷",
+  "Inglaterra": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+  "Itália": "🇮🇹",
+  "Portugal": "🇵🇹",
+  "Holanda": "🇳🇱",
+  "Países Baixos": "🇳🇱",
+  "Bélgica": "🇧🇪",
+  "Croácia": "🇭🇷",
+  "Dinamarca": "🇩🇰",
+  "Suíça": "🇨🇭",
+  "Áustria": "🇦🇹",
+  "Polônia": "🇵🇱",
+  "Suécia": "🇸🇪",
+  "Ucrânia": "🇺🇦",
+  "Sérvia": "🇷🇸",
+  "República Tcheca": "🇨🇿",
+  "Escócia": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  "País de Gales": "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
+  "Noruega": "🇳🇴",
+  "Turquia": "🇹🇷",
+  "Grécia": "🇬🇷",
+  "Rússia": "🇷🇺",
+  
+  // África
+  "Marrocos": "🇲🇦",
+  "Senegal": "🇸🇳",
+  "Nigéria": "🇳🇬",
+  "Tunísia": "🇹🇳",
+  "Argélia": "🇩🇿",
+  "Camarões": "🇨🇲",
+  "Gana": "🇬🇭",
+  "Costa do Marfim": "🇨🇮",
+  "Mali": "🇲🇱",
+  "Burkina Faso": "🇧🇫",
+  "África do Sul": "🇿🇦",
+  "Egito": "🇪🇬",
+  
+  // Ásia
+  "Japão": "🇯🇵",
+  "Coreia do Sul": "🇰🇷",
+  "Irã": "🇮🇷",
+  "Arábia Saudita": "🇸🇦",
+  "Austrália": "🇦🇺",
+  "Catar": "🇶🇦",
+  "Iraque": "🇮🇶",
+  "Emirados Árabes": "🇦🇪",
+  "China": "🇨🇳",
+  "Tailândia": "🇹🇭",
+  "Vietnã": "🇻🇳",
+  "Uzbequistão": "🇺🇿",
+  
+  // Oceania
+  "Nova Zelândia": "🇳🇿",
+}
+
+export function getCountryFlag(countryName: string): string {
+  return countryFlags[countryName] || "🏳️"
+}

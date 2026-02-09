@@ -20,13 +20,7 @@ export default function AdminPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push("/auth/login"); return }
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", user.id)
-        .single()
-
-      if (!data?.is_admin) {
+      if (user.email !== "jonaszeferino@gmail.com") {
         router.push("/matches")
         return
       }

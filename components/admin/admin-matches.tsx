@@ -33,6 +33,7 @@ interface Match {
 
 const STAGES = [
   { value: "group", label: "Fase de Grupos" },
+  { value: "round_of_32", label: "16-avos de Final" },
   { value: "round_of_16", label: "Oitavas de Final" },
   { value: "quarter_final", label: "Quartas de Final" },
   { value: "semi_final", label: "Semifinal" },
@@ -86,6 +87,10 @@ export function AdminMatches() {
       setError("Selecione times diferentes")
       return
     }
+    if (stage === "group" && !groupName) {
+      setError("Selecione o grupo da partida")
+      return
+    }
     setIsSubmitting(true)
     setError(null)
     const supabase = createClient()
@@ -118,6 +123,12 @@ export function AdminMatches() {
   }
 
   const stageLabel = (s: string) => STAGES.find((st) => st.value === s)?.label || s
+
+  const matchesByStage = matches.reduce<Record<string, Match[]>>((acc, match) => {
+    if (!acc[match.stage]) acc[match.stage] = []
+    acc[match.stage].push(match)
+    return acc
+  }, {})
 
   return (
     <div className="flex flex-col gap-6">
@@ -211,48 +222,122 @@ export function AdminMatches() {
           {matches.length === 0 ? (
             <p className="py-8 text-center text-muted-foreground">Nenhuma partida cadastrada</p>
           ) : (
-            <div className="flex flex-col gap-2">
-              {matches.map((match) => (
-                <div
-                  key={match.id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3"
-                >
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground">
-                        {match.home_team.code} vs {match.away_team.code}
-                      </span>
-                      <Badge variant="outline" className="text-xs border-border text-muted-foreground">
-                        {stageLabel(match.stage)}
-                        {match.group_name ? ` - ${match.group_name}` : ""}
-                      </Badge>
-                      <Badge
-                        variant="secondary"
-                        className={
-                          match.status === "finished"
-                            ? "bg-primary/10 text-primary text-xs"
-                            : match.status === "live"
-                            ? "bg-destructive/10 text-destructive text-xs"
-                            : "text-xs"
-                        }
-                      >
-                        {match.status === "scheduled" ? "Agendada" : match.status === "live" ? "Ao Vivo" : "Encerrada"}
-                      </Badge>
+            <div className="flex flex-col gap-6">
+              {STAGES.map((stageItem) => {
+                const stageMatches = matchesByStage[stageItem.value] || []
+                if (stageMatches.length === 0) return null
+
+                if (stageItem.value === "group") {
+                  const groupedByGroup = stageMatches.reduce<Record<string, Match[]>>((acc, match) => {
+                    const key = match.group_name || "Sem Grupo"
+                    if (!acc[key]) acc[key] = []
+                    acc[key].push(match)
+                    return acc
+                  }, {})
+
+                  return (
+                    <div key={stageItem.value} className="flex flex-col gap-4">
+                      <h3 className="text-sm font-semibold text-foreground">{stageItem.label}</h3>
+                      {Object.entries(groupedByGroup)
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .map(([group, groupMatches]) => (
+                          <div key={group} className="flex flex-col gap-2">
+                            <div className="text-xs font-medium text-muted-foreground">
+                              {group === "Sem Grupo" ? group : `Grupo ${group}`}
+                            </div>
+                            {groupMatches.map((match) => (
+                              <div
+                                key={match.id}
+                                className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3"
+                              >
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-foreground">
+                                      {match.home_team.code} vs {match.away_team.code}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs border-border text-muted-foreground">
+                                      {stageLabel(match.stage)}
+                                      {match.group_name ? ` - ${match.group_name}` : ""}
+                                    </Badge>
+                                    <Badge
+                                      variant="secondary"
+                                      className={
+                                        match.status === "finished"
+                                          ? "bg-primary/10 text-primary text-xs"
+                                          : match.status === "live"
+                                          ? "bg-destructive/10 text-destructive text-xs"
+                                          : "text-xs"
+                                      }
+                                    >
+                                      {match.status === "scheduled" ? "Agendada" : match.status === "live" ? "Ao Vivo" : "Encerrada"}
+                                    </Badge>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">
+                                    {format(new Date(match.match_date), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}
+                                  </span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleDelete(match.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {format(new Date(match.match_date), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}
-                    </span>
+                  )
+                }
+
+                return (
+                  <div key={stageItem.value} className="flex flex-col gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">{stageItem.label}</h3>
+                    {stageMatches.map((match) => (
+                      <div
+                        key={match.id}
+                        className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3"
+                      >
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-foreground">
+                              {match.home_team.code} vs {match.away_team.code}
+                            </span>
+                            <Badge variant="outline" className="text-xs border-border text-muted-foreground">
+                              {stageLabel(match.stage)}
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className={
+                                match.status === "finished"
+                                  ? "bg-primary/10 text-primary text-xs"
+                                  : match.status === "live"
+                                  ? "bg-destructive/10 text-destructive text-xs"
+                                  : "text-xs"
+                              }
+                            >
+                              {match.status === "scheduled" ? "Agendada" : match.status === "live" ? "Ao Vivo" : "Encerrada"}
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(match.match_date), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDelete(match.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => handleDelete(match.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>

@@ -19,10 +19,22 @@ interface Team {
   group_name: string | null
 }
 
+interface TeamDraft {
+  name: string
+  code: string
+}
+
 const GROUPS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
 
 export function AdminTeams() {
   const [teams, setTeams] = useState<Team[]>([])
+  const [batchGroup, setBatchGroup] = useState("")
+  const [batchTeams, setBatchTeams] = useState<TeamDraft[]>([
+    { name: "", code: "" },
+    { name: "", code: "" },
+    { name: "", code: "" },
+    { name: "", code: "" },
+  ])
   const [name, setName] = useState("")
   const [code, setCode] = useState("")
   const [groupName, setGroupName] = useState("")
@@ -40,6 +52,64 @@ export function AdminTeams() {
   }, [])
 
   useEffect(() => { loadTeams() }, [loadTeams])
+
+  const updateBatchTeam = (index: number, field: keyof TeamDraft, value: string) => {
+    setBatchTeams((prev) =>
+      prev.map((team, i) => (i === index ? { ...team, [field]: value } : team))
+    )
+  }
+
+  const handleAddGroup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setError(null)
+
+    if (!batchGroup) {
+      setError("Selecione o grupo")
+      setIsSubmitting(false)
+      return
+    }
+
+    const cleanTeams = batchTeams
+      .map((t) => ({ name: t.name.trim(), code: t.code.trim().toUpperCase() }))
+      .filter((t) => t.name && t.code)
+
+    if (cleanTeams.length !== 4) {
+      setError("Informe 4 selecoes com nome e codigo")
+      setIsSubmitting(false)
+      return
+    }
+
+    const codeSet = new Set(cleanTeams.map((t) => t.code))
+    if (codeSet.size !== cleanTeams.length) {
+      setError("Codigos repetidos no grupo")
+      setIsSubmitting(false)
+      return
+    }
+
+    const supabase = createClient()
+    const { error: insertErr } = await supabase.from("teams").insert(
+      cleanTeams.map((t) => ({
+        name: t.name,
+        code: t.code,
+        group_name: batchGroup,
+      }))
+    )
+
+    if (insertErr) {
+      setError(insertErr.message)
+    } else {
+      setBatchGroup("")
+      setBatchTeams([
+        { name: "", code: "" },
+        { name: "", code: "" },
+        { name: "", code: "" },
+        { name: "", code: "" },
+      ])
+      loadTeams()
+    }
+    setIsSubmitting(false)
+  }
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -79,6 +149,61 @@ export function AdminTeams() {
 
   return (
     <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-card-foreground">Adicionar Grupo (4 selecoes)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleAddGroup} className="flex flex-col gap-4">
+            <div className="grid gap-2 sm:w-60">
+              <Label>Grupo</Label>
+              <Select value={batchGroup} onValueChange={setBatchGroup}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o grupo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GROUPS.map((g) => (
+                    <SelectItem key={g} value={g}>Grupo {g}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-3">
+              {batchTeams.map((team, index) => (
+                <div key={index} className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Selecao {index + 1}</Label>
+                    <Input
+                      placeholder="Brasil"
+                      value={team.name}
+                      onChange={(e) => updateBatchTeam(index, "name", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Codigo (3 letras)</Label>
+                    <Input
+                      placeholder="BRA"
+                      maxLength={3}
+                      value={team.code}
+                      onChange={(e) => updateBatchTeam(index, "code", e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" disabled={isSubmitting} className="w-fit">
+              <Plus className="mr-1 h-4 w-4" />
+              {isSubmitting ? "Adicionando..." : "Adicionar Grupo"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-card-foreground">Adicionar Selecao</CardTitle>

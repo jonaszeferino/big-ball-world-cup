@@ -6,9 +6,10 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, display_name, is_admin)
+  insert into public.profiles (id, email, display_name, is_admin)
   values (
     new.id,
+    new.email,
     coalesce(new.raw_user_meta_data ->> 'display_name', split_part(new.email, '@', 1)),
     coalesce((new.raw_user_meta_data ->> 'is_admin')::boolean, false)
   )

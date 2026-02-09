@@ -1,6 +1,7 @@
 -- Profiles table
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
+  email text not null,
   display_name text not null,
   is_admin boolean default false,
   total_points integer default 0,

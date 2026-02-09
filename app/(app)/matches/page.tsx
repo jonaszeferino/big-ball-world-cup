@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { getCountryFlag } from "@/lib/country-flags"
+import { PlayoffBrackets } from "@/components/playoff-brackets"
 
 interface Team {
   id: string
@@ -224,6 +225,26 @@ export default function MatchesPage() {
                       </div>
                     </div>
                   ))}
+              </div>
+            ) : activeTab === "round_of_32" ? (
+              <div className="flex flex-col gap-6">
+                <PlayoffBrackets />
+                {filteredMatches.length > 0 && (
+                  <>
+                    <h2 className="text-xl font-semibold text-foreground">Apostas nas Partidas</h2>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {filteredMatches.map((match) => (
+                        <MatchCard
+                          key={match.id}
+                          match={match}
+                          bet={bets.find((b) => b.match_id === match.id) || null}
+                          userId={userId!}
+                          onBetPlaced={loadData}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">

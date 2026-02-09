@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react"
 import { AdminTeams } from "@/components/admin/admin-teams"
 import { AdminMatches } from "@/components/admin/admin-matches"
 import { AdminResults } from "@/components/admin/admin-results"
+import { PlayoffBrackets } from "@/components/playoff-brackets"
 
 export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false)
@@ -51,6 +52,7 @@ export default function AdminPage() {
         <TabsList>
           <TabsTrigger value="teams">Selecoes</TabsTrigger>
           <TabsTrigger value="matches">Partidas</TabsTrigger>
+          <TabsTrigger value="playoffs">Chaves Playoffs</TabsTrigger>
           <TabsTrigger value="results">Resultados</TabsTrigger>
         </TabsList>
 
@@ -59,6 +61,9 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent value="matches" className="mt-4">
           <AdminMatches />
+        </TabsContent>
+        <TabsContent value="playoffs" className="mt-4">
+          <PlayoffBrackets />
         </TabsContent>
         <TabsContent value="results" className="mt-4">
           <AdminResults />

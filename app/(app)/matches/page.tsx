@@ -36,10 +36,32 @@ interface Bet {
   points_earned: number
 }
 
+interface TeamStats {
+  played: number
+  won: number
+  draw: number
+  lost: number
+  goalsFor: number
+  goalsAgainst: number
+  goalDiff: number
+  points: number
+}
+
+interface OfficialResult {
+  team_home: string
+  team_away: string
+  goals_home: number
+  goals_away: number
+  match_result_home: string
+  match_result_away: string
+  group: string | null
+}
+
 export default function MatchesPage() {
   const [matches, setMatches] = useState<Match[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [bets, setBets] = useState<Bet[]>([])
+  const [officialResults, setOfficialResults] = useState<OfficialResult[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("group")
@@ -84,6 +106,13 @@ export default function MatchesPage() {
       .eq("user_id", user.id)
 
     if (betData) setBets(betData)
+
+    const { data: resultsData } = await supabase
+      .from("teams_results")
+      .select("team_home, team_away, goals_home, goals_away, match_result_home, match_result_away, group")
+
+    if (resultsData) setOfficialResults(resultsData as OfficialResult[])
+
     setLoading(false)
   }, [])
 
@@ -128,6 +157,56 @@ export default function MatchesPage() {
     return acc
   }, {})
 
+  const calculateTeamStats = (teamName: string, groupName: string): TeamStats => {
+    const stats: TeamStats = {
+      played: 0,
+      won: 0,
+      draw: 0,
+      lost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDiff: 0,
+      points: 0,
+    }
+
+    const teamResults = officialResults.filter(
+      (r) => r.group === groupName && (r.team_home === teamName || r.team_away === teamName)
+    )
+
+    teamResults.forEach((result) => {
+      stats.played++
+      
+      if (result.team_home === teamName) {
+        stats.goalsFor += result.goals_home
+        stats.goalsAgainst += result.goals_away
+        if (result.match_result_home === "W") {
+          stats.won++
+          stats.points += 3
+        } else if (result.match_result_home === "T") {
+          stats.draw++
+          stats.points += 1
+        } else {
+          stats.lost++
+        }
+      } else {
+        stats.goalsFor += result.goals_away
+        stats.goalsAgainst += result.goals_home
+        if (result.match_result_away === "W") {
+          stats.won++
+          stats.points += 3
+        } else if (result.match_result_away === "T") {
+          stats.draw++
+          stats.points += 1
+        } else {
+          stats.lost++
+        }
+      }
+    })
+
+    stats.goalDiff = stats.goalsFor - stats.goalsAgainst
+    return stats
+  }
+
   const GROUPS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
 
   return (
@@ -158,33 +237,59 @@ export default function MatchesPage() {
                     const groupTeams = teamsByGroup[groupLetter]
                     if (!groupTeams || groupTeams.length === 0) return null
 
+                    const teamsWithStats = groupTeams.map((team) => ({
+                      ...team,
+                      stats: calculateTeamStats(team.name, groupLetter),
+                    })).sort((a, b) => {
+                      if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points
+                      if (b.stats.goalDiff !== a.stats.goalDiff) return b.stats.goalDiff - a.stats.goalDiff
+                      return b.stats.goalsFor - a.stats.goalsFor
+                    })
+
                     return (
                       <Card key={groupLetter}>
                         <CardHeader className="pb-3">
                           <CardTitle className="text-base">Grupo {groupLetter}</CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0">
-                          <div className="overflow-hidden rounded-lg border border-border">
-                            <table className="w-full text-sm">
+                          <div className="overflow-x-auto rounded-lg border border-border">
+                            <table className="w-full text-xs">
                               <thead className="bg-muted/50">
                                 <tr>
-                                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">#</th>
-                                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Seleção</th>
+                                  <th className="px-2 py-2 text-left font-medium text-muted-foreground">#</th>
+                                  <th className="px-2 py-2 text-left font-medium text-muted-foreground">Time</th>
+                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">PG</th>
+                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">V</th>
+                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">E</th>
+                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">D</th>
+                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">GP</th>
+                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">GC</th>
+                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">SG</th>
+                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">Pts</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-border">
-                                {groupTeams.map((team, index) => (
+                                {teamsWithStats.map((team, index) => (
                                   <tr key={team.id} className="hover:bg-muted/30">
-                                    <td className="px-3 py-2.5 font-medium text-muted-foreground">
+                                    <td className="px-2 py-2.5 font-medium text-muted-foreground">
                                       {index + 1}
                                     </td>
-                                    <td className="px-3 py-2.5">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-2xl" title={team.name}>{getCountryFlag(team.name)}</span>
+                                    <td className="px-2 py-2.5">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-lg" title={team.name}>{getCountryFlag(team.name)}</span>
                                         <span className="font-semibold text-foreground">{team.code}</span>
-                                        <span className="text-muted-foreground">{team.name}</span>
                                       </div>
                                     </td>
+                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.played}</td>
+                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.won}</td>
+                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.draw}</td>
+                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.lost}</td>
+                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.goalsFor}</td>
+                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.goalsAgainst}</td>
+                                    <td className={`px-2 py-2.5 text-center font-medium ${team.stats.goalDiff > 0 ? 'text-green-600' : team.stats.goalDiff < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                                      {team.stats.goalDiff > 0 ? '+' : ''}{team.stats.goalDiff}
+                                    </td>
+                                    <td className="px-2 py-2.5 text-center font-bold text-foreground">{team.stats.points}</td>
                                   </tr>
                                 ))}
                               </tbody>

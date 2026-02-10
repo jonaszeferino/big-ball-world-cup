@@ -252,44 +252,44 @@ export default function MatchesPage() {
                           <CardTitle className="text-base">Grupo {groupLetter}</CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0">
-                          <div className="overflow-x-auto rounded-lg border border-border">
-                            <table className="w-full text-xs">
+                          <div className="overflow-hidden rounded-lg border border-border">
+                            <table className="w-full table-fixed text-[11px] sm:text-xs">
                               <thead className="bg-muted/50">
                                 <tr>
-                                  <th className="px-2 py-2 text-left font-medium text-muted-foreground">#</th>
-                                  <th className="px-2 py-2 text-left font-medium text-muted-foreground">Time</th>
-                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">PG</th>
-                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">V</th>
-                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">E</th>
-                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">D</th>
-                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">GP</th>
-                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">GC</th>
-                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">SG</th>
-                                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">Pts</th>
+                                  <th className="px-1.5 py-2 text-left font-medium text-muted-foreground">#</th>
+                                  <th className="px-1.5 py-2 text-left font-medium text-muted-foreground">Time</th>
+                                  <th className="px-1.5 py-2 text-center font-medium text-muted-foreground">PG</th>
+                                  <th className="hidden sm:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">V</th>
+                                  <th className="hidden sm:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">E</th>
+                                  <th className="hidden sm:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">D</th>
+                                  <th className="hidden md:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">GP</th>
+                                  <th className="hidden md:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">GC</th>
+                                  <th className="px-1.5 py-2 text-center font-medium text-muted-foreground">SG</th>
+                                  <th className="px-1.5 py-2 text-center font-medium text-muted-foreground">Pts</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-border">
                                 {teamsWithStats.map((team, index) => (
                                   <tr key={team.id} className="hover:bg-muted/30">
-                                    <td className="px-2 py-2.5 font-medium text-muted-foreground">
+                                    <td className="px-1.5 py-2.5 font-medium text-muted-foreground">
                                       {index + 1}
                                     </td>
-                                    <td className="px-2 py-2.5">
+                                    <td className="px-1.5 py-2.5">
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-lg" title={team.name}>{getCountryFlag(team.name)}</span>
                                         <span className="font-semibold text-foreground">{team.code}</span>
                                       </div>
                                     </td>
-                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.played}</td>
-                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.won}</td>
-                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.draw}</td>
-                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.lost}</td>
-                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.goalsFor}</td>
-                                    <td className="px-2 py-2.5 text-center text-muted-foreground">{team.stats.goalsAgainst}</td>
-                                    <td className={`px-2 py-2.5 text-center font-medium ${team.stats.goalDiff > 0 ? 'text-green-600' : team.stats.goalDiff < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                                    <td className="px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.played}</td>
+                                    <td className="hidden sm:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.won}</td>
+                                    <td className="hidden sm:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.draw}</td>
+                                    <td className="hidden sm:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.lost}</td>
+                                    <td className="hidden md:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.goalsFor}</td>
+                                    <td className="hidden md:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.goalsAgainst}</td>
+                                    <td className={`px-1.5 py-2.5 text-center font-medium ${team.stats.goalDiff > 0 ? 'text-green-600' : team.stats.goalDiff < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
                                       {team.stats.goalDiff > 0 ? '+' : ''}{team.stats.goalDiff}
                                     </td>
-                                    <td className="px-2 py-2.5 text-center font-bold text-foreground">{team.stats.points}</td>
+                                    <td className="px-1.5 py-2.5 text-center font-bold text-foreground">{team.stats.points}</td>
                                   </tr>
                                 ))}
                               </tbody>

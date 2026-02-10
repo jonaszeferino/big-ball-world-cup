@@ -49,6 +49,13 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
   const isLocked = match.status !== "scheduled"
   const hasBet = !!bet
 
+  // Verificar se a aposta pode ser feita (até 5 minutos antes)
+  const now = new Date()
+  const matchTime = new Date(match.match_date)
+  const timeDiffInMinutes = (matchTime.getTime() - now.getTime()) / (1000 * 60)
+  const canBet = timeDiffInMinutes > 5 && !isLocked && !isFinished
+  const betLocked = timeDiffInMinutes <= 5 && timeDiffInMinutes > 0 && match.status === "scheduled"
+
   const stageLabels: Record<string, string> = {
     group: "Fase de Grupos",
     round_of_16: "Oitavas",
@@ -61,6 +68,14 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
   const handleSubmit = async () => {
     setIsSubmitting(true)
     setError(null)
+
+    // Validar se ainda pode fazer aposta (5 minutos antes do jogo)
+    if (!canBet) {
+      setError("Aposta bloqueada. A aposta só pode ser feita até 5 minutos antes da partida.")
+      setIsSubmitting(false)
+      return
+    }
+
     const supabase = createClient()
 
     try {
@@ -146,7 +161,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
           </div>
         </div>
 
-        {!isLocked && (
+        {!isLocked && !betLocked && (
           <div className="mt-4 flex flex-col gap-3">
             <div className="flex items-center justify-center gap-3">
               <div className="flex items-center gap-1">
@@ -155,7 +170,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
                   size="icon"
                   className="h-8 w-8 bg-transparent text-foreground border-border"
                   onClick={() => setHomeScore(Math.max(0, homeScore - 1))}
-                  disabled={homeScore === 0}
+                  disabled={homeScore === 0 || !canBet}
                 >
                   <Minus className="h-3 w-3" />
                 </Button>
@@ -164,13 +179,15 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
                   min={0}
                   value={homeScore}
                   onChange={(e) => setHomeScore(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="h-8 w-12 text-center text-sm font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  disabled={!canBet}
+                  className="h-8 w-12 text-center text-sm font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none disabled:opacity-50"
                 />
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-8 w-8 bg-transparent text-foreground border-border"
                   onClick={() => setHomeScore(homeScore + 1)}
+                  disabled={!canBet}
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
@@ -184,7 +201,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
                   size="icon"
                   className="h-8 w-8 bg-transparent text-foreground border-border"
                   onClick={() => setAwayScore(Math.max(0, awayScore - 1))}
-                  disabled={awayScore === 0}
+                  disabled={awayScore === 0 || !canBet}
                 >
                   <Minus className="h-3 w-3" />
                 </Button>
@@ -193,13 +210,15 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
                   min={0}
                   value={awayScore}
                   onChange={(e) => setAwayScore(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="h-8 w-12 text-center text-sm font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  disabled={!canBet}
+                  className="h-8 w-12 text-center text-sm font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none disabled:opacity-50"
                 />
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-8 w-8 bg-transparent text-foreground border-border"
                   onClick={() => setAwayScore(awayScore + 1)}
+                  disabled={!canBet}
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
@@ -209,13 +228,22 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
             <Button
               size="sm"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !canBet}
               className="w-full"
             >
               <Check className="mr-1 h-4 w-4" />
               {isSubmitting ? "Salvando..." : hasBet ? "Atualizar Aposta" : "Confirmar Aposta"}
             </Button>
             {error && <p className="text-xs text-destructive text-center">{error}</p>}
+          </div>
+        )}
+
+        {betLocked && (
+          <div className="mt-4 flex items-center justify-center rounded-md bg-destructive/10 px-3 py-2">
+            <Lock className="mr-2 h-4 w-4 text-destructive" />
+            <span className="text-xs text-destructive font-medium">
+              Aposta bloqueada há {Math.abs(Math.ceil(timeDiffInMinutes))} min
+            </span>
           </div>
         )}
 

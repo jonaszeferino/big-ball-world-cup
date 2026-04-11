@@ -41,6 +41,96 @@ const STAGES = [
   { value: "final", label: "Final" },
 ]
 
+function toDatetimeLocalValue(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function RegisteredMatchRow({
+  match,
+  stageLabelFn,
+  disabled,
+  onSaveDate,
+  onDelete,
+}: {
+  match: Match
+  stageLabelFn: (s: string) => string
+  disabled: boolean
+  onSaveDate: (matchId: string, datetimeLocal: string) => void | Promise<void>
+  onDelete: (id: string) => void
+}) {
+  const [dateValue, setDateValue] = useState(() => toDatetimeLocalValue(match.match_date))
+
+  useEffect(() => {
+    setDateValue(toDatetimeLocalValue(match.match_date))
+  }, [match.id, match.match_date])
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 p-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-foreground">
+            {match.home_team.code} vs {match.away_team.code}
+          </span>
+          <Badge variant="outline" className="text-xs border-border text-muted-foreground">
+            {stageLabelFn(match.stage)}
+            {match.group_name ? ` - ${match.group_name}` : ""}
+          </Badge>
+          <Badge
+            variant="secondary"
+            className={
+              match.status === "finished"
+                ? "bg-primary/10 text-primary text-xs"
+                : match.status === "live"
+                  ? "bg-destructive/10 text-destructive text-xs"
+                  : "text-xs"
+            }
+          >
+            {match.status === "scheduled"
+              ? "Agendada"
+              : match.status === "live"
+                ? "Ao Vivo"
+                : "Encerrada"}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Atual: {format(new Date(match.match_date), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}
+        </p>
+        <div className="grid w-full max-w-xs gap-1.5">
+          <Label className="text-xs">Nova data e hora</Label>
+          <Input
+            type="datetime-local"
+            value={dateValue}
+            onChange={(e) => setDateValue(e.target.value)}
+            disabled={disabled}
+          />
+        </div>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={disabled || !dateValue}
+          onClick={() => void onSaveDate(match.id, dateValue)}
+        >
+          Guardar
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-muted-foreground hover:text-destructive"
+          disabled={disabled}
+          onClick={() => onDelete(match.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export function AdminMatches() {
   const [teams, setTeams] = useState<Team[]>([])
   const [matches, setMatches] = useState<Match[]>([])
@@ -116,6 +206,22 @@ export function AdminMatches() {
     setIsSubmitting(false)
   }
 
+  const handleUpdateMatchDate = async (matchId: string, datetimeLocal: string) => {
+    setIsSubmitting(true)
+    setError(null)
+    const supabase = createClient()
+    const { error: updateErr } = await supabase
+      .from("matches")
+      .update({ match_date: new Date(datetimeLocal).toISOString() })
+      .eq("id", matchId)
+    if (updateErr) {
+      setError(updateErr.message)
+    } else {
+      await loadData()
+    }
+    setIsSubmitting(false)
+  }
+
   const handleDelete = async (id: string) => {
     const supabase = createClient()
     await supabase.from("matches").delete().eq("id", id)
@@ -132,6 +238,11 @@ export function AdminMatches() {
 
   return (
     <div className="flex flex-col gap-6">
+      {error && (
+        <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2" role="alert">
+          {error}
+        </p>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-card-foreground">Criar Partida</CardTitle>
@@ -205,7 +316,6 @@ export function AdminMatches() {
                 </div>
               )}
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={isSubmitting || !homeTeamId || !awayTeamId} className="w-fit">
               <Plus className="mr-1 h-4 w-4" />
               {isSubmitting ? "Criando..." : "Criar Partida"}
@@ -246,45 +356,14 @@ export function AdminMatches() {
                               {group === "Sem Grupo" ? group : `Grupo ${group}`}
                             </div>
                             {groupMatches.map((match) => (
-                              <div
+                              <RegisteredMatchRow
                                 key={match.id}
-                                className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3"
-                              >
-                                <div className="flex flex-col gap-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium text-foreground">
-                                      {match.home_team.code} vs {match.away_team.code}
-                                    </span>
-                                    <Badge variant="outline" className="text-xs border-border text-muted-foreground">
-                                      {stageLabel(match.stage)}
-                                      {match.group_name ? ` - ${match.group_name}` : ""}
-                                    </Badge>
-                                    <Badge
-                                      variant="secondary"
-                                      className={
-                                        match.status === "finished"
-                                          ? "bg-primary/10 text-primary text-xs"
-                                          : match.status === "live"
-                                          ? "bg-destructive/10 text-destructive text-xs"
-                                          : "text-xs"
-                                      }
-                                    >
-                                      {match.status === "scheduled" ? "Agendada" : match.status === "live" ? "Ao Vivo" : "Encerrada"}
-                                    </Badge>
-                                  </div>
-                                  <span className="text-xs text-muted-foreground">
-                                    {format(new Date(match.match_date), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}
-                                  </span>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                  onClick={() => handleDelete(match.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                                match={match}
+                                stageLabelFn={stageLabel}
+                                disabled={isSubmitting}
+                                onSaveDate={handleUpdateMatchDate}
+                                onDelete={handleDelete}
+                              />
                             ))}
                           </div>
                         ))}
@@ -296,44 +375,14 @@ export function AdminMatches() {
                   <div key={stageItem.value} className="flex flex-col gap-2">
                     <h3 className="text-sm font-semibold text-foreground">{stageItem.label}</h3>
                     {stageMatches.map((match) => (
-                      <div
+                      <RegisteredMatchRow
                         key={match.id}
-                        className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3"
-                      >
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground">
-                              {match.home_team.code} vs {match.away_team.code}
-                            </span>
-                            <Badge variant="outline" className="text-xs border-border text-muted-foreground">
-                              {stageLabel(match.stage)}
-                            </Badge>
-                            <Badge
-                              variant="secondary"
-                              className={
-                                match.status === "finished"
-                                  ? "bg-primary/10 text-primary text-xs"
-                                  : match.status === "live"
-                                  ? "bg-destructive/10 text-destructive text-xs"
-                                  : "text-xs"
-                              }
-                            >
-                              {match.status === "scheduled" ? "Agendada" : match.status === "live" ? "Ao Vivo" : "Encerrada"}
-                            </Badge>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(match.match_date), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDelete(match.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                        match={match}
+                        stageLabelFn={stageLabel}
+                        disabled={isSubmitting}
+                        onSaveDate={handleUpdateMatchDate}
+                        onDelete={handleDelete}
+                      />
                     ))}
                   </div>
                 )

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Trophy, BarChart3, Gamepad2, Shield, LogOut, Menu, X, BookOpen } from "lucide-react"
+import { Trophy, BarChart3, Gamepad2, Shield, LogOut, BookOpen } from "lucide-react"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 
@@ -18,7 +18,6 @@ export function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -46,95 +45,98 @@ export function Navbar() {
     { href: "/matches", label: "Partidas", icon: Gamepad2 },
     { href: "/ranking", label: "Ranking", icon: BarChart3 },
     { href: "/rules", label: "Regras", icon: BookOpen },
-  ]
+  ] as const
 
-  if (profile?.is_admin) {
-    navLinks.push({ href: "/admin", label: "Admin", icon: Shield })
+  const adminLinks = profile?.is_admin
+    ? ([{ href: "/admin", label: "Admin", icon: Shield }] as const)
+    : []
+
+  const allLinks = [...navLinks, ...adminLinks]
+
+  const linkActive = (href: string) => {
+    if (href === "/matches") return pathname === "/matches" || pathname.startsWith("/matches/")
+    return pathname.startsWith(href)
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-card">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-        <Link href="/matches" className="flex items-center gap-2 text-primary">
-          <Trophy className="h-6 w-6" />
-          <span className="text-lg font-bold font-sans">Copa 2026</span>
-        </Link>
+    <>
+      <header className="sticky top-0 z-50 border-b border-border/80 bg-card/95 backdrop-blur-md supports-[backdrop-filter]:bg-card/80">
+        <div className="mx-auto flex h-[52px] max-w-5xl items-center justify-between px-4 md:h-14 md:px-6">
+          <Link
+            href="/matches"
+            className="flex items-center gap-2 text-foreground transition-opacity hover:opacity-70"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#f09433] via-[#dc2743] to-[#bc1888] p-[2px] shadow-sm">
+              <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-card">
+                <Trophy className="h-5 w-5 text-primary" />
+              </div>
+            </div>
+            <span className="hidden font-semibold tracking-tight sm:inline">Copa 2026</span>
+          </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
-          {navLinks.map((link) => {
-            const Icon = link.icon
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  pathname.startsWith(link.href)
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {link.label}
-              </Link>
-            )
-          })}
-        </nav>
-
-        <div className="hidden items-center gap-3 md:flex">
-          {profile && (
-            <span className="text-sm font-medium text-foreground">{profile.display_name}</span>
-          )}
-          <Button variant="outline" size="sm" onClick={handleLogout} className="bg-transparent text-foreground border-border hover:bg-muted">
-            <LogOut className="mr-1 h-4 w-4" />
-            Sair
-          </Button>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className="md:hidden text-foreground"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
-      </div>
-
-      {mobileMenuOpen && (
-        <div className="border-t border-border bg-card px-4 pb-4 md:hidden">
-          <nav className="flex flex-col gap-1 pt-2">
-            {navLinks.map((link) => {
+          <nav className="hidden items-center gap-0.5 md:flex">
+            {allLinks.map((link) => {
               const Icon = link.icon
+              const active = linkActive(link.href)
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    pathname.startsWith(link.href)
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors",
+                    active
+                      ? "text-primary"
+                      : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className={cn("h-5 w-5", active && "scale-105")} />
                   {link.label}
                 </Link>
               )
             })}
           </nav>
-          <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+
+          <div className="flex items-center gap-2">
             {profile && (
-              <span className="text-sm font-medium text-foreground">{profile.display_name}</span>
+              <span className="hidden max-w-[140px] truncate text-sm font-medium text-foreground md:inline">
+                {profile.display_name}
+              </span>
             )}
-            <Button variant="outline" size="sm" onClick={handleLogout} className="bg-transparent text-foreground border-border">
-              <LogOut className="mr-1 h-4 w-4" />
-              Sair
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="h-9 w-9 rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+              aria-label="Sair"
+            >
+              <LogOut className="h-[18px] w-[18px]" />
             </Button>
           </div>
         </div>
-      )}
-    </header>
+      </header>
+
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 flex h-14 items-center justify-around border-t border-border bg-card/95 pb-safe backdrop-blur-md supports-[backdrop-filter]:bg-card/90 md:hidden"
+        aria-label="Navegação principal"
+      >
+        {allLinks.map((link) => {
+          const Icon = link.icon
+          const active = linkActive(link.href)
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                "flex min-w-[56px] flex-col items-center justify-center gap-0.5 py-1 text-[10px] font-semibold transition-colors",
+                active ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              <Icon className={cn("h-6 w-6", active && "scale-105")} />
+              <span>{link.label}</span>
+            </Link>
+          )
+        })}
+      </nav>
+    </>
   )
 }

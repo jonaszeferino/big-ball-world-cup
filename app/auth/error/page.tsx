@@ -6,7 +6,7 @@ export default function AuthErrorPage() {
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 bg-background">
       <div className="w-full max-w-sm">
-        <Card className="w-full text-center">
+        <Card className="w-full rounded-2xl border-border/80 text-center shadow-sm">
           <CardHeader>
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
               <AlertTriangle className="h-6 w-6 text-destructive" />

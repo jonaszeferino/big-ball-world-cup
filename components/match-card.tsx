@@ -115,9 +115,9 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
 
   return (
     <Card className={cn(
-      "transition-all",
+      "overflow-hidden rounded-2xl border-border/80 shadow-sm transition-all",
       isFinished && "opacity-80",
-      hasBet && !isFinished && "ring-2 ring-primary/30"
+      hasBet && !isFinished && "ring-2 ring-primary/25"
     )}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">

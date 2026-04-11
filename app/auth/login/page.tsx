@@ -53,7 +53,7 @@ export default function LoginPage() {
             <Trophy className="h-8 w-8" />
             <span className="text-2xl font-bold font-sans">Copa 2026</span>
           </div>
-          <Card className="w-full">
+          <Card className="w-full rounded-2xl border-border/80 shadow-sm">
             <CardHeader>
               <CardTitle className="text-2xl text-card-foreground">Entrar</CardTitle>
               <CardDescription>Digite seu email e senha para acessar o bolao</CardDescription>

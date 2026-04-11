@@ -68,7 +68,7 @@ export default function SignUpPage() {
             <Trophy className="h-8 w-8" />
             <span className="text-2xl font-bold font-sans">Copa 2026</span>
           </div>
-          <Card className="w-full">
+          <Card className="w-full rounded-2xl border-border/80 shadow-sm">
             <CardHeader>
               <CardTitle className="text-2xl text-card-foreground">Cadastro</CardTitle>
               <CardDescription>Crie sua conta para participar do bolao</CardDescription>

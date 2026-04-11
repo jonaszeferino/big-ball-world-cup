@@ -6,39 +6,43 @@
   .text-balance {
     text-wrap: balance;
   }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 @layer base {
   :root {
-    --background: 210 40% 96%;
-    --foreground: 220 25% 10%;
+    /* Estilo claro tipo Instagram: fundo cinza, cartões brancos, borda #dbdbdb */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 220 25% 10%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
-    --primary: 153 60% 33%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 204 89% 48%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 30% 90%;
-    --secondary-foreground: 220 25% 10%;
-    --muted: 210 25% 93%;
-    --muted-foreground: 220 10% 45%;
-    --accent: 45 93% 47%;
-    --accent-foreground: 220 25% 10%;
-    --destructive: 0 84% 60%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 204 89% 48%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 350 89% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 210 20% 85%;
-    --input: 210 20% 85%;
-    --ring: 153 60% 33%;
-    --chart-1: 153 60% 33%;
-    --chart-2: 45 93% 47%;
+    --border: 0 0% 86%;
+    --input: 0 0% 86%;
+    --ring: 204 89% 48%;
+    --chart-1: 204 89% 48%;
+    --chart-2: 280 60% 55%;
     --chart-3: 210 50% 50%;
-    --chart-4: 0 84% 60%;
-    --chart-5: 280 50% 50%;
-    --radius: 0.625rem;
-    --success: 153 60% 33%;
+    --chart-4: 350 89% 60%;
+    --chart-5: 45 93% 47%;
+    --radius: 0.75rem;
+    --success: 152 60% 40%;
     --success-foreground: 0 0% 100%;
     --warning: 45 93% 47%;
-    --warning-foreground: 220 25% 10%;
+    --warning-foreground: 0 0% 9%;
   }
 }
 

@@ -11,7 +11,7 @@ export default function SignUpSuccessPage() {
             <Trophy className="h-8 w-8" />
             <span className="text-2xl font-bold font-sans">Copa 2026</span>
           </div>
-          <Card className="w-full text-center">
+          <Card className="w-full rounded-2xl border-border/80 text-center shadow-sm">
             <CardHeader>
               <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                 <Mail className="h-6 w-6 text-primary" />

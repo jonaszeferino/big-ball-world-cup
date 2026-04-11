@@ -276,7 +276,7 @@ export default function MatchesPage() {
                                     </td>
                                     <td className="px-1.5 py-2.5">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-lg" title={team.name}>{getCountryFlag(team.name)}</span>
+                                        <span className="text-2xl leading-none sm:text-3xl" title={team.name}>{getCountryFlag(team.name)}</span>
                                         <span className="font-semibold text-foreground">{team.code}</span>
                                       </div>
                                     </td>

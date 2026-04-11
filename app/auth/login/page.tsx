@@ -3,6 +3,7 @@
 import React from "react"
 
 import { createClient } from "@/lib/supabase/client"
+import { formatAuthError } from "@/lib/supabase/format-auth-error"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -21,16 +22,24 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
+
+    let supabase: ReturnType<typeof createClient>
+    try {
+      supabase = createClient()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Configuracao Supabase invalida")
+      setIsLoading(false)
+      return
+    }
 
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       router.push("/matches")
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Ocorreu um erro")
+      setError(formatAuthError(err))
     } finally {
       setIsLoading(false)
     }

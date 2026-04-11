@@ -3,6 +3,7 @@
 import React from "react"
 
 import { createClient } from "@/lib/supabase/client"
+import { formatAuthError } from "@/lib/supabase/format-auth-error"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,12 +24,20 @@ export default function SignUpPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
     if (password !== repeatPassword) {
       setError("As senhas nao coincidem")
+      setIsLoading(false)
+      return
+    }
+
+    let supabase: ReturnType<typeof createClient>
+    try {
+      supabase = createClient()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Configuracao Supabase invalida")
       setIsLoading(false)
       return
     }
@@ -45,7 +54,7 @@ export default function SignUpPage() {
       if (error) throw error
       router.push("/auth/sign-up-success")
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Ocorreu um erro")
+      setError(formatAuthError(err))
     } finally {
       setIsLoading(false)
     }

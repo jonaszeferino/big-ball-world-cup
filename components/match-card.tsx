@@ -137,7 +137,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
 
         <div className="flex items-center justify-between gap-2">
           <div className="flex flex-1 flex-col items-center gap-1 text-center">
-            <span className="text-2xl" title={match.home_team.name}>{getCountryFlag(match.home_team.name)}</span>
+            <span className="text-4xl leading-none sm:text-5xl" title={match.home_team.name}>{getCountryFlag(match.home_team.name)}</span>
             <span className="text-xs font-bold uppercase text-muted-foreground">{match.home_team.code}</span>
             <span className="text-sm font-medium text-card-foreground">{match.home_team.name}</span>
           </div>
@@ -155,7 +155,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
           )}
 
           <div className="flex flex-1 flex-col items-center gap-1 text-center">
-            <span className="text-2xl" title={match.away_team.name}>{getCountryFlag(match.away_team.name)}</span>
+            <span className="text-4xl leading-none sm:text-5xl" title={match.away_team.name}>{getCountryFlag(match.away_team.name)}</span>
             <span className="text-xs font-bold uppercase text-muted-foreground">{match.away_team.code}</span>
             <span className="text-sm font-medium text-card-foreground">{match.away_team.name}</span>
           </div>

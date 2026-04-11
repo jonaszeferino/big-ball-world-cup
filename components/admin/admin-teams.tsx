@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2 } from "lucide-react"
 import { getCountryFlag } from "@/lib/country-flags"
 
@@ -26,6 +25,108 @@ interface TeamDraft {
 }
 
 const GROUPS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
+
+const NO_GROUP = "__none__"
+
+function TeamEditRow({
+  team,
+  disabled,
+  onSave,
+  onDelete,
+}: {
+  team: Team
+  disabled: boolean
+  onSave: (
+    teamId: string,
+    name: string,
+    code: string,
+    group: string,
+  ) => void | Promise<void>
+  onDelete: (id: string) => void
+}) {
+  const [name, setName] = useState(team.name)
+  const [code, setCode] = useState(team.code)
+  const [groupName, setGroupName] = useState(team.group_name ?? NO_GROUP)
+
+  useEffect(() => {
+    setName(team.name)
+    setCode(team.code)
+    setGroupName(team.group_name ?? NO_GROUP)
+  }, [team.id, team.name, team.code, team.group_name])
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 p-3 sm:flex-row sm:flex-wrap sm:items-end">
+      <span className="shrink-0 text-2xl leading-none" title={name}>
+        {getCountryFlag(name)}
+      </span>
+      <div className="grid min-w-0 flex-1 gap-1 sm:max-w-[200px]">
+        <Label className="text-xs">Nome</Label>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={disabled}
+        />
+      </div>
+      <div className="grid w-full gap-1 sm:w-24">
+        <Label className="text-xs">Codigo</Label>
+        <Input
+          value={code}
+          maxLength={3}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          disabled={disabled}
+        />
+      </div>
+      <div className="grid w-full gap-1 sm:w-36">
+        <Label className="text-xs">Grupo</Label>
+        <Select
+          value={groupName}
+          onValueChange={setGroupName}
+          disabled={disabled}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Grupo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_GROUP}>Sem grupo</SelectItem>
+            {GROUPS.map((g) => (
+              <SelectItem key={g} value={g}>
+                Grupo {g}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={disabled}
+          onClick={() =>
+            void onSave(
+              team.id,
+              name,
+              code,
+              groupName === NO_GROUP ? "" : groupName,
+            )
+          }
+        >
+          Guardar
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground hover:text-destructive"
+          disabled={disabled}
+          onClick={() => onDelete(team.id)}
+          aria-label={`Remover ${team.name}`}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export function AdminTeams() {
   const [teams, setTeams] = useState<Team[]>([])
@@ -135,6 +236,43 @@ export function AdminTeams() {
     setIsSubmitting(false)
   }
 
+  const handleUpdate = async (
+    teamId: string,
+    nextName: string,
+    nextCode: string,
+    nextGroup: string,
+  ) => {
+    setIsSubmitting(true)
+    setError(null)
+    const name = nextName.trim()
+    const code = nextCode.trim().toUpperCase()
+    if (!name || !code) {
+      setError("Nome e codigo sao obrigatorios")
+      setIsSubmitting(false)
+      return
+    }
+    if (code.length !== 3) {
+      setError("Codigo deve ter 3 letras")
+      setIsSubmitting(false)
+      return
+    }
+    const supabase = createClient()
+    const { error: updateErr } = await supabase
+      .from("teams")
+      .update({
+        name,
+        code,
+        group_name: nextGroup || null,
+      })
+      .eq("id", teamId)
+    if (updateErr) {
+      setError(updateErr.message)
+    } else {
+      await loadTeams()
+    }
+    setIsSubmitting(false)
+  }
+
   const handleDelete = async (id: string) => {
     const supabase = createClient()
     await supabase.from("teams").delete().eq("id", id)
@@ -150,6 +288,11 @@ export function AdminTeams() {
 
   return (
     <div className="flex flex-col gap-6">
+      {error && (
+        <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2" role="alert">
+          {error}
+        </p>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-card-foreground">Adicionar Grupo (4 selecoes)</CardTitle>
@@ -196,7 +339,6 @@ export function AdminTeams() {
               ))}
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={isSubmitting} className="w-fit">
               <Plus className="mr-1 h-4 w-4" />
               {isSubmitting ? "Adicionando..." : "Adicionar Grupo"}
@@ -247,7 +389,6 @@ export function AdminTeams() {
                 </Select>
               </div>
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={isSubmitting} className="w-fit">
               <Plus className="mr-1 h-4 w-4" />
               {isSubmitting ? "Adicionando..." : "Adicionar Selecao"}
@@ -267,24 +408,15 @@ export function AdminTeams() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col gap-3">
                   {groupTeams.map((team) => (
-                    <Badge
+                    <TeamEditRow
                       key={team.id}
-                      variant="secondary"
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm"
-                    >
-                      <span className="text-lg" title={team.name}>{getCountryFlag(team.name)}</span>
-                      <span className="font-bold text-secondary-foreground">{team.code}</span>
-                      <span className="text-secondary-foreground">{team.name}</span>
-                      <button
-                        onClick={() => handleDelete(team.id)}
-                        className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        aria-label={`Remover ${team.name}`}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </Badge>
+                      team={team}
+                      disabled={isSubmitting}
+                      onSave={handleUpdate}
+                      onDelete={handleDelete}
+                    />
                   ))}
                 </div>
               </CardContent>

@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { MatchCard } from "@/components/match-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
+import { Loader2, Trophy, Calendar } from "lucide-react"
 import { getCountryFlag } from "@/lib/country-flags"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
 
@@ -57,6 +57,22 @@ interface OfficialResult {
   group: string | null
 }
 
+const GROUPS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
+
+function sortMatchesByDateAsc(matches: Match[]): Match[] {
+  return [...matches].sort(
+    (a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime(),
+  )
+}
+
+function matchesForStage(matches: Match[], stageValue: string): Match[] {
+  const filtered = matches.filter((m) => {
+    if (stageValue === "final") return m.stage === "final" || m.stage === "third_place"
+    return m.stage === stageValue
+  })
+  return sortMatchesByDateAsc(filtered)
+}
+
 export default function MatchesPage() {
   const [matches, setMatches] = useState<Match[]>([])
   const [teams, setTeams] = useState<Team[]>([])
@@ -64,6 +80,7 @@ export default function MatchesPage() {
   const [officialResults, setOfficialResults] = useState<OfficialResult[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [mainView, setMainView] = useState<"partidas" | "classificacao">("partidas")
   const [activeTab, setActiveTab] = useState("group")
 
   const loadData = useCallback(async () => {
@@ -120,6 +137,71 @@ export default function MatchesPage() {
     loadData()
   }, [loadData])
 
+  const teamsByGroup = useMemo(
+    () =>
+      teams.reduce<Record<string, Team[]>>((acc, team) => {
+        if (team.group_name) {
+          if (!acc[team.group_name]) acc[team.group_name] = []
+          acc[team.group_name].push(team)
+        }
+        return acc
+      }, {}),
+    [teams],
+  )
+
+  const calculateTeamStats = useCallback(
+    (teamName: string, groupName: string): TeamStats => {
+      const stats: TeamStats = {
+        played: 0,
+        won: 0,
+        draw: 0,
+        lost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        goalDiff: 0,
+        points: 0,
+      }
+
+      const teamResults = officialResults.filter(
+        (r) => r.group === groupName && (r.team_home === teamName || r.team_away === teamName),
+      )
+
+      teamResults.forEach((result) => {
+        stats.played++
+
+        if (result.team_home === teamName) {
+          stats.goalsFor += result.goals_home
+          stats.goalsAgainst += result.goals_away
+          if (result.match_result_home === "W") {
+            stats.won++
+            stats.points += 3
+          } else if (result.match_result_home === "T") {
+            stats.draw++
+            stats.points += 1
+          } else {
+            stats.lost++
+          }
+        } else {
+          stats.goalsFor += result.goals_away
+          stats.goalsAgainst += result.goals_home
+          if (result.match_result_away === "W") {
+            stats.won++
+            stats.points += 3
+          } else if (result.match_result_away === "T") {
+            stats.draw++
+            stats.points += 1
+          } else {
+            stats.lost++
+          }
+        }
+      })
+
+      stats.goalDiff = stats.goalsFor - stats.goalsAgainst
+      return stats
+    },
+    [officialResults],
+  )
+
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -129,7 +211,7 @@ export default function MatchesPage() {
   }
 
   const stages = [
-    { value: "group", label: "Grupos" },
+    { value: "group", label: "Fase de grupos" },
     { value: "round_of_32", label: "16-avos" },
     { value: "round_of_16", label: "Oitavas" },
     { value: "quarter_final", label: "Quartas" },
@@ -137,188 +219,210 @@ export default function MatchesPage() {
     { value: "final", label: "Finais" },
   ]
 
-  const filteredMatches = matches.filter((m) => {
-    if (activeTab === "final") return m.stage === "final" || m.stage === "third_place"
-    return m.stage === activeTab
-  })
+  const standingsSection =
+    Object.keys(teamsByGroup).length > 0 ? (
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Tabela dos grupos</h2>
+          <p className="text-sm text-muted-foreground">
+            Pontos, saldo de gols e estatisticas por grupo (com base nos resultados oficiais cadastrados).
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {GROUPS.map((groupLetter) => {
+            const groupTeams = teamsByGroup[groupLetter]
+            if (!groupTeams || groupTeams.length === 0) return null
 
-  const groupedByGroup = filteredMatches.reduce<Record<string, Match[]>>((acc, match) => {
-    const key = match.group_name || "Playoff"
-    if (!acc[key]) acc[key] = []
-    acc[key].push(match)
-    return acc
-  }, {})
+            const teamsWithStats = groupTeams
+              .map((team) => ({
+                ...team,
+                stats: calculateTeamStats(team.name, groupLetter),
+              }))
+              .sort((a, b) => {
+                if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points
+                if (b.stats.goalDiff !== a.stats.goalDiff) return b.stats.goalDiff - a.stats.goalDiff
+                return b.stats.goalsFor - a.stats.goalsFor
+              })
 
-  const teamsByGroup = teams.reduce<Record<string, Team[]>>((acc, team) => {
-    if (team.group_name) {
-      if (!acc[team.group_name]) acc[team.group_name] = []
-      acc[team.group_name].push(team)
-    }
-    return acc
-  }, {})
-
-  const calculateTeamStats = (teamName: string, groupName: string): TeamStats => {
-    const stats: TeamStats = {
-      played: 0,
-      won: 0,
-      draw: 0,
-      lost: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      goalDiff: 0,
-      points: 0,
-    }
-
-    const teamResults = officialResults.filter(
-      (r) => r.group === groupName && (r.team_home === teamName || r.team_away === teamName)
+            return (
+              <Card key={groupLetter} className="overflow-hidden rounded-2xl border-border/80 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Grupo {groupLetter}</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="overflow-hidden rounded-xl border border-border">
+                    <table className="w-full table-fixed text-[11px] sm:text-xs">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-1.5 py-2 text-left font-medium text-muted-foreground">#</th>
+                          <th className="px-1.5 py-2 text-left font-medium text-muted-foreground">Time</th>
+                          <th className="px-1.5 py-2 text-center font-medium text-muted-foreground">PG</th>
+                          <th className="hidden sm:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">V</th>
+                          <th className="hidden sm:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">E</th>
+                          <th className="hidden sm:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">D</th>
+                          <th className="hidden md:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">GP</th>
+                          <th className="hidden md:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">GC</th>
+                          <th className="px-1.5 py-2 text-center font-medium text-muted-foreground">SG</th>
+                          <th className="px-1.5 py-2 text-center font-medium text-muted-foreground">Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {teamsWithStats.map((team, index) => (
+                          <tr key={team.id} className="hover:bg-muted/30">
+                            <td className="px-1.5 py-2.5 font-medium text-muted-foreground">{index + 1}</td>
+                            <td className="px-1.5 py-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-2xl leading-none sm:text-3xl" title={team.name}>
+                                  {getCountryFlag(team.name)}
+                                </span>
+                                <span className="font-semibold text-foreground">{team.code}</span>
+                              </div>
+                            </td>
+                            <td className="px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.played}</td>
+                            <td className="hidden sm:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.won}</td>
+                            <td className="hidden sm:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.draw}</td>
+                            <td className="hidden sm:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.lost}</td>
+                            <td className="hidden md:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.goalsFor}</td>
+                            <td className="hidden md:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.goalsAgainst}</td>
+                            <td
+                              className={`px-1.5 py-2.5 text-center font-medium ${
+                                team.stats.goalDiff > 0
+                                  ? "text-green-600"
+                                  : team.stats.goalDiff < 0
+                                    ? "text-red-600"
+                                    : "text-muted-foreground"
+                              }`}
+                            >
+                              {team.stats.goalDiff > 0 ? "+" : ""}
+                              {team.stats.goalDiff}
+                            </td>
+                            <td className="px-1.5 py-2.5 text-center font-bold text-foreground">{team.stats.points}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
+    ) : (
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/50 py-16">
+        <Trophy className="mb-3 h-10 w-10 text-muted-foreground" />
+        <p className="text-muted-foreground">Nenhum time em grupo cadastrado ainda</p>
+      </div>
     )
-
-    teamResults.forEach((result) => {
-      stats.played++
-      
-      if (result.team_home === teamName) {
-        stats.goalsFor += result.goals_home
-        stats.goalsAgainst += result.goals_away
-        if (result.match_result_home === "W") {
-          stats.won++
-          stats.points += 3
-        } else if (result.match_result_home === "T") {
-          stats.draw++
-          stats.points += 1
-        } else {
-          stats.lost++
-        }
-      } else {
-        stats.goalsFor += result.goals_away
-        stats.goalsAgainst += result.goals_home
-        if (result.match_result_away === "W") {
-          stats.won++
-          stats.points += 3
-        } else if (result.match_result_away === "T") {
-          stats.draw++
-          stats.points += 1
-        } else {
-          stats.lost++
-        }
-      }
-    })
-
-    stats.goalDiff = stats.goalsFor - stats.goalsAgainst
-    return stats
-  }
-
-  const GROUPS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Partidas</h1>
         <p className="text-sm text-muted-foreground">
-          Selecione o placar e confirme sua aposta antes do inicio da partida
+          Classificacao dos grupos e apostas por fase — partidas ordenadas da data mais proxima.
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full justify-start overflow-x-auto">
-          {stages.map((stage) => (
-            <TabsTrigger key={stage.value} value={stage.value} className="text-xs sm:text-sm">
-              {stage.label}
-            </TabsTrigger>
-          ))}
+      <Tabs value={mainView} onValueChange={(v) => setMainView(v as "partidas" | "classificacao")}>
+        <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl p-1 sm:max-w-md">
+          <TabsTrigger value="partidas" className="gap-2 rounded-lg py-2.5">
+            <Calendar className="h-4 w-4" />
+            Partidas
+          </TabsTrigger>
+          <TabsTrigger value="classificacao" className="gap-2 rounded-lg py-2.5">
+            <Trophy className="h-4 w-4" />
+            Grupos
+          </TabsTrigger>
         </TabsList>
 
-        {stages.map((stage) => (
-          <TabsContent key={stage.value} value={stage.value} className="mt-4">
-            {stage.value === "group" && Object.keys(teamsByGroup).length > 0 && (
-              <div className="mb-8">
-                <h2 className="mb-4 text-xl font-semibold text-foreground">Grupos da Copa</h2>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {GROUPS.map((groupLetter) => {
-                    const groupTeams = teamsByGroup[groupLetter]
-                    if (!groupTeams || groupTeams.length === 0) return null
+        <TabsContent value="classificacao" className="mt-6">
+          {standingsSection}
+        </TabsContent>
 
-                    const teamsWithStats = groupTeams.map((team) => ({
-                      ...team,
-                      stats: calculateTeamStats(team.name, groupLetter),
-                    })).sort((a, b) => {
-                      if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points
-                      if (b.stats.goalDiff !== a.stats.goalDiff) return b.stats.goalDiff - a.stats.goalDiff
-                      return b.stats.goalsFor - a.stats.goalsFor
-                    })
+        <TabsContent value="partidas" className="mt-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full justify-start overflow-x-auto rounded-xl p-1">
+              {stages.map((stage) => (
+                <TabsTrigger key={stage.value} value={stage.value} className="rounded-lg text-xs sm:text-sm">
+                  {stage.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-                    return (
-                      <Card key={groupLetter}>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">Grupo {groupLetter}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <div className="overflow-hidden rounded-lg border border-border">
-                            <table className="w-full table-fixed text-[11px] sm:text-xs">
-                              <thead className="bg-muted/50">
-                                <tr>
-                                  <th className="px-1.5 py-2 text-left font-medium text-muted-foreground">#</th>
-                                  <th className="px-1.5 py-2 text-left font-medium text-muted-foreground">Time</th>
-                                  <th className="px-1.5 py-2 text-center font-medium text-muted-foreground">PG</th>
-                                  <th className="hidden sm:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">V</th>
-                                  <th className="hidden sm:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">E</th>
-                                  <th className="hidden sm:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">D</th>
-                                  <th className="hidden md:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">GP</th>
-                                  <th className="hidden md:table-cell px-1.5 py-2 text-center font-medium text-muted-foreground">GC</th>
-                                  <th className="px-1.5 py-2 text-center font-medium text-muted-foreground">SG</th>
-                                  <th className="px-1.5 py-2 text-center font-medium text-muted-foreground">Pts</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-border">
-                                {teamsWithStats.map((team, index) => (
-                                  <tr key={team.id} className="hover:bg-muted/30">
-                                    <td className="px-1.5 py-2.5 font-medium text-muted-foreground">
-                                      {index + 1}
-                                    </td>
-                                    <td className="px-1.5 py-2.5">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-2xl leading-none sm:text-3xl" title={team.name}>{getCountryFlag(team.name)}</span>
-                                        <span className="font-semibold text-foreground">{team.code}</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.played}</td>
-                                    <td className="hidden sm:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.won}</td>
-                                    <td className="hidden sm:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.draw}</td>
-                                    <td className="hidden sm:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.lost}</td>
-                                    <td className="hidden md:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.goalsFor}</td>
-                                    <td className="hidden md:table-cell px-1.5 py-2.5 text-center text-muted-foreground">{team.stats.goalsAgainst}</td>
-                                    <td className={`px-1.5 py-2.5 text-center font-medium ${team.stats.goalDiff > 0 ? 'text-green-600' : team.stats.goalDiff < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
-                                      {team.stats.goalDiff > 0 ? '+' : ''}{team.stats.goalDiff}
-                                    </td>
-                                    <td className="px-1.5 py-2.5 text-center font-bold text-foreground">{team.stats.points}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
+            {stages.map((stage) => {
+              const stageList = matchesForStage(matches, stage.value)
+              const grouped = stageList.reduce<Record<string, Match[]>>((acc, match) => {
+                const key = match.group_name || "Playoff"
+                if (!acc[key]) acc[key] = []
+                acc[key].push(match)
+                return acc
+              }, {})
+
+              const emptyPhase = (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card py-16 shadow-sm">
+                  <p className="text-muted-foreground">Nenhuma partida nesta fase ainda</p>
                 </div>
-              </div>
-            )}
+              )
 
-            {filteredMatches.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card py-16">
-                <p className="text-muted-foreground">Nenhuma partida nesta fase ainda</p>
-              </div>
-            ) : activeTab === "group" ? (
-              <div className="flex flex-col gap-6">
-                <h2 className="text-xl font-semibold text-foreground">Apostas nas Partidas</h2>
-                {Object.entries(groupedByGroup)
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([groupName, groupMatches]) => (
-                    <div key={groupName}>
-                      <h3 className="mb-3 text-lg font-medium text-foreground">
-                        Grupo {groupName}
-                      </h3>
+              return (
+                <TabsContent key={stage.value} value={stage.value} className="mt-4">
+                  {stage.value === "round_of_32" ? (
+                    <div className="flex flex-col gap-6">
+                      <PlayoffBrackets />
+                      {stageList.length === 0 ? (
+                        emptyPhase
+                      ) : (
+                        <>
+                          <h2 className="text-xl font-semibold text-foreground">Apostas</h2>
+                          <p className="-mt-2 text-sm text-muted-foreground">
+                            Ordenado por data (mais proxima primeiro).
+                          </p>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {stageList.map((match) => (
+                              <MatchCard
+                                key={match.id}
+                                match={match}
+                                bet={bets.find((b) => b.match_id === match.id) || null}
+                                userId={userId!}
+                                onBetPlaced={loadData}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : stageList.length === 0 ? (
+                    emptyPhase
+                  ) : stage.value === "group" ? (
+                    <div className="flex flex-col gap-6">
+                      <p className="text-sm text-muted-foreground">
+                        Ordem: partidas mais proximas primeiro dentro de cada grupo.
+                      </p>
+                      {Object.entries(grouped)
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .map(([groupName, groupMatches]) => (
+                          <div key={groupName}>
+                            <h3 className="mb-3 text-lg font-semibold text-foreground">Grupo {groupName}</h3>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              {groupMatches.map((match) => (
+                                <MatchCard
+                                  key={match.id}
+                                  match={match}
+                                  bet={bets.find((b) => b.match_id === match.id) || null}
+                                  userId={userId!}
+                                  onBetPlaced={loadData}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm text-muted-foreground">Ordenado por data (mais proxima primeiro).</p>
                       <div className="grid gap-3 sm:grid-cols-2">
-                        {groupMatches.map((match) => (
+                        {stageList.map((match) => (
                           <MatchCard
                             key={match.id}
                             match={match}
@@ -329,43 +433,12 @@ export default function MatchesPage() {
                         ))}
                       </div>
                     </div>
-                  ))}
-              </div>
-            ) : activeTab === "round_of_32" ? (
-              <div className="flex flex-col gap-6">
-                <PlayoffBrackets />
-                {filteredMatches.length > 0 && (
-                  <>
-                    <h2 className="text-xl font-semibold text-foreground">Apostas nas Partidas</h2>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {filteredMatches.map((match) => (
-                        <MatchCard
-                          key={match.id}
-                          match={match}
-                          bet={bets.find((b) => b.match_id === match.id) || null}
-                          userId={userId!}
-                          onBetPlaced={loadData}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {filteredMatches.map((match) => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    bet={bets.find((b) => b.match_id === match.id) || null}
-                    userId={userId!}
-                    onBetPlaced={loadData}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        ))}
+                  )}
+                </TabsContent>
+              )
+            })}
+          </Tabs>
+        </TabsContent>
       </Tabs>
     </div>
   )

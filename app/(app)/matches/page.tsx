@@ -228,7 +228,7 @@ export default function MatchesPage() {
             Pontos, saldo de gols e estatisticas por grupo (com base nos resultados oficiais cadastrados).
           </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {GROUPS.map((groupLetter) => {
             const groupTeams = teamsByGroup[groupLetter]
             if (!groupTeams || groupTeams.length === 0) return null
@@ -251,37 +251,37 @@ export default function MatchesPage() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="-mx-1 overflow-x-auto rounded-xl border border-border sm:mx-0">
-                    <table className="w-full min-w-[36rem] border-collapse text-xs sm:text-sm">
+                    <table className="w-full min-w-[32rem] border-collapse text-[11px] sm:min-w-0 sm:text-xs md:text-sm">
                       <thead className="bg-muted/50">
                         <tr>
-                          <th className="w-8 whitespace-nowrap px-2 py-2.5 text-center text-[10px] font-medium text-muted-foreground sm:text-xs">
+                          <th className="w-8 whitespace-nowrap px-1.5 py-2 text-center font-medium text-muted-foreground sm:px-2 sm:py-2.5">
                             #
                           </th>
-                          <th className="min-w-[7.5rem] whitespace-nowrap px-2 py-2.5 text-left text-[10px] font-medium text-muted-foreground sm:min-w-[8.5rem] sm:text-xs">
+                          <th className="min-w-[6.5rem] whitespace-nowrap px-1.5 py-2 text-left font-medium text-muted-foreground sm:min-w-[7.5rem] sm:px-2">
                             Time
                           </th>
-                          <th className="w-9 whitespace-nowrap px-1.5 py-2.5 text-center text-[10px] font-medium text-muted-foreground sm:w-10 sm:text-xs">
+                          <th className="w-8 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-9 sm:px-1.5">
                             PG
                           </th>
-                          <th className="hidden w-8 whitespace-nowrap px-1 py-2.5 text-center text-[10px] font-medium text-muted-foreground sm:table-cell sm:text-xs">
+                          <th className="w-7 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-8">
                             V
                           </th>
-                          <th className="hidden w-8 whitespace-nowrap px-1 py-2.5 text-center text-[10px] font-medium text-muted-foreground sm:table-cell sm:text-xs">
+                          <th className="w-7 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-8">
                             E
                           </th>
-                          <th className="hidden w-8 whitespace-nowrap px-1 py-2.5 text-center text-[10px] font-medium text-muted-foreground sm:table-cell sm:text-xs">
+                          <th className="w-7 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-8">
                             D
                           </th>
-                          <th className="hidden w-9 whitespace-nowrap px-1 py-2.5 text-center text-[10px] font-medium text-muted-foreground md:table-cell md:text-xs">
+                          <th className="w-8 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-9">
                             GP
                           </th>
-                          <th className="hidden w-9 whitespace-nowrap px-1 py-2.5 text-center text-[10px] font-medium text-muted-foreground md:table-cell md:text-xs">
+                          <th className="w-8 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-9">
                             GC
                           </th>
-                          <th className="w-10 whitespace-nowrap px-1.5 py-2.5 text-center text-[10px] font-medium text-muted-foreground sm:text-xs">
+                          <th className="w-9 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-10">
                             SG
                           </th>
-                          <th className="w-11 whitespace-nowrap px-2 py-2.5 text-center text-[10px] font-medium text-muted-foreground sm:text-xs">
+                          <th className="w-10 whitespace-nowrap px-1.5 py-2 text-center font-medium text-muted-foreground sm:w-11 sm:px-2">
                             Pts
                           </th>
                         </tr>
@@ -289,13 +289,13 @@ export default function MatchesPage() {
                       <tbody className="divide-y divide-border">
                         {teamsWithStats.map((team, index) => (
                           <tr key={team.id} className="hover:bg-muted/30">
-                            <td className="whitespace-nowrap px-2 py-2.5 text-center font-medium text-muted-foreground">
+                            <td className="whitespace-nowrap px-1.5 py-2 text-center font-medium text-muted-foreground sm:px-2 sm:py-2.5">
                               {index + 1}
                             </td>
-                            <td className="min-w-[7.5rem] px-2 py-2 sm:min-w-[8.5rem]">
-                              <div className="flex items-center gap-2">
+                            <td className="min-w-[6.5rem] px-1.5 py-1.5 sm:min-w-[7.5rem] sm:px-2 sm:py-2">
+                              <div className="flex items-center gap-1.5 sm:gap-2">
                                 <span
-                                  className="shrink-0 text-xl leading-none sm:text-2xl"
+                                  className="shrink-0 text-lg leading-none sm:text-xl md:text-2xl"
                                   title={team.name}
                                 >
                                   {getCountryFlag(team.name)}
@@ -303,22 +303,22 @@ export default function MatchesPage() {
                                 <span className="whitespace-nowrap font-semibold text-foreground">{team.code}</span>
                               </div>
                             </td>
-                            <td className="whitespace-nowrap px-1.5 py-2.5 text-center text-muted-foreground">
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:px-1.5 sm:py-2.5">
                               {team.stats.played}
                             </td>
-                            <td className="hidden whitespace-nowrap px-1 py-2.5 text-center text-muted-foreground sm:table-cell">
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
                               {team.stats.won}
                             </td>
-                            <td className="hidden whitespace-nowrap px-1 py-2.5 text-center text-muted-foreground sm:table-cell">
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
                               {team.stats.draw}
                             </td>
-                            <td className="hidden whitespace-nowrap px-1 py-2.5 text-center text-muted-foreground sm:table-cell">
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
                               {team.stats.lost}
                             </td>
-                            <td className="hidden whitespace-nowrap px-1 py-2.5 text-center text-muted-foreground md:table-cell">
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
                               {team.stats.goalsFor}
                             </td>
-                            <td className="hidden whitespace-nowrap px-1 py-2.5 text-center text-muted-foreground md:table-cell">
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
                               {team.stats.goalsAgainst}
                             </td>
                             <td

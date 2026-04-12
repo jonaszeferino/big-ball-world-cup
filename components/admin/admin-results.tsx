@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Check, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { applyMatchResultAndUpdateBets } from "@/lib/match-result-scoring"
 
 interface Team {
   id: string
@@ -67,84 +68,28 @@ export function AdminResults() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { loadMatches() }, [loadMatches])
-
-  const calculatePoints = (
-    actualHome: number,
-    actualAway: number,
-    predictedHome: number,
-    predictedAway: number
-  ) => {
-    if (actualHome === predictedHome && actualAway === predictedAway) return 3
-
-    const actualResult = actualHome > actualAway ? "home" : actualHome < actualAway ? "away" : "draw"
-    const predictedResult = predictedHome > predictedAway ? "home" : predictedHome < predictedAway ? "away" : "draw"
-
-    if (actualResult === predictedResult) return 1
-    return 0
-  }
+  useEffect(() => {
+    loadMatches()
+  }, [loadMatches])
 
   const handleSetResult = async (matchId: string) => {
     setSubmittingId(matchId)
     const supabase = createClient()
     const matchScores = scores[matchId]
-    if (!matchScores) return
-
-    const { error: matchErr } = await supabase
-      .from("matches")
-      .update({
-        home_score: matchScores.home,
-        away_score: matchScores.away,
-        status: "finished",
-      })
-      .eq("id", matchId)
-
-    if (matchErr) {
+    if (!matchScores) {
       setSubmittingId(null)
       return
     }
 
-    const { data: bets } = await supabase
-      .from("bets")
-      .select("id, user_id, predicted_home_score, predicted_away_score")
-      .eq("match_id", matchId)
-
-    if (bets && bets.length > 0) {
-      const pointsMap: Record<string, number> = {}
-
-      for (const bet of bets) {
-        const points = calculatePoints(
-          matchScores.home,
-          matchScores.away,
-          bet.predicted_home_score,
-          bet.predicted_away_score
-        )
-
-        await supabase
-          .from("bets")
-          .update({ points_earned: points })
-          .eq("id", bet.id)
-
-        if (!pointsMap[bet.user_id]) pointsMap[bet.user_id] = 0
-        pointsMap[bet.user_id] += points
-      }
-
-      for (const [userId, points] of Object.entries(pointsMap)) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("total_points")
-          .eq("id", userId)
-          .single()
-
-        if (profile) {
-          await supabase
-            .from("profiles")
-            .update({ total_points: profile.total_points + points })
-            .eq("id", userId)
-        }
-      }
+    const { error } = await applyMatchResultAndUpdateBets(
+      supabase,
+      matchId,
+      matchScores.home,
+      matchScores.away,
+    )
+    if (error) {
+      console.error(error)
     }
-
     await loadMatches()
     setSubmittingId(null)
   }
@@ -190,8 +135,8 @@ export function AdminResults() {
                       {format(new Date(match.match_date), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">{match.home_team.code}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold uppercase text-muted-foreground">{match.home_team.code}</span>
                     <Input
                       type="number"
                       min={0}
@@ -217,12 +162,8 @@ export function AdminResults() {
                       }
                       className="h-8 w-14 text-center text-sm font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
-                    <span className="text-xs font-bold text-muted-foreground uppercase">{match.away_team.code}</span>
-                    <Button
-                      size="sm"
-                      onClick={() => handleSetResult(match.id)}
-                      disabled={submittingId === match.id}
-                    >
+                    <span className="text-xs font-bold uppercase text-muted-foreground">{match.away_team.code}</span>
+                    <Button size="sm" onClick={() => handleSetResult(match.id)} disabled={submittingId === match.id}>
                       {submittingId === match.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
@@ -243,9 +184,7 @@ export function AdminResults() {
       {finishedMatches.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-card-foreground">
-              Resultados Definidos ({finishedMatches.length})
-            </CardTitle>
+            <CardTitle className="text-card-foreground">Resultados Definidos ({finishedMatches.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-2">
@@ -255,19 +194,13 @@ export function AdminResults() {
                   className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-sm text-foreground">
-                      {match.home_team.code}
-                    </span>
+                    <span className="text-sm text-foreground">{match.home_team.code}</span>
                     <span className="text-lg font-bold text-primary">
                       {match.home_score} x {match.away_score}
                     </span>
-                    <span className="text-sm text-foreground">
-                      {match.away_team.code}
-                    </span>
+                    <span className="text-sm text-foreground">{match.away_team.code}</span>
                   </div>
-                  <Badge className="bg-primary/10 text-primary text-xs">
-                    Encerrada
-                  </Badge>
+                  <Badge className="bg-primary/10 text-xs text-primary">Encerrada</Badge>
                 </div>
               ))}
             </div>

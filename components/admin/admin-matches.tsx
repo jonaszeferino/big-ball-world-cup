@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Check, Loader2 } from "lucide-react"
+import { applyMatchResultAndUpdateBets } from "@/lib/match-result-scoring"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
@@ -25,6 +26,8 @@ interface Match {
   id: string
   home_team: Team
   away_team: Team
+  home_score: number | null
+  away_score: number | null
   match_date: string
   stage: string
   group_name: string | null
@@ -52,19 +55,29 @@ function RegisteredMatchRow({
   stageLabelFn,
   disabled,
   onSaveDate,
+  onSaveResult,
   onDelete,
 }: {
   match: Match
   stageLabelFn: (s: string) => string
   disabled: boolean
   onSaveDate: (matchId: string, datetimeLocal: string) => void | Promise<void>
+  onSaveResult: (matchId: string, home: number, away: number) => void | Promise<void>
   onDelete: (id: string) => void
 }) {
   const [dateValue, setDateValue] = useState(() => toDatetimeLocalValue(match.match_date))
+  const [homeScore, setHomeScore] = useState(match.home_score ?? 0)
+  const [awayScore, setAwayScore] = useState(match.away_score ?? 0)
+  const [savingResult, setSavingResult] = useState(false)
 
   useEffect(() => {
     setDateValue(toDatetimeLocalValue(match.match_date))
   }, [match.id, match.match_date])
+
+  useEffect(() => {
+    setHomeScore(match.home_score ?? 0)
+    setAwayScore(match.away_score ?? 0)
+  }, [match.id, match.home_score, match.away_score])
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 p-4 sm:flex-row sm:items-end sm:justify-between">
@@ -105,6 +118,56 @@ function RegisteredMatchRow({
             onChange={(e) => setDateValue(e.target.value)}
             disabled={disabled}
           />
+        </div>
+        <div className="rounded-lg border border-border bg-card/80 p-3">
+          <Label className="text-xs font-medium text-foreground">Resultado final (bolao)</Label>
+          <p className="mb-2 text-[11px] text-muted-foreground">
+            Salva o placar oficial e calcula pontos das apostas (3 exato, 1 vencedor/empate).
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-muted-foreground">{match.home_team.code}</span>
+            <Input
+              type="number"
+              min={0}
+              value={homeScore}
+              onChange={(e) => setHomeScore(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              disabled={disabled || savingResult}
+              className="h-9 w-14 text-center text-sm font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span className="text-xs text-muted-foreground">x</span>
+            <Input
+              type="number"
+              min={0}
+              value={awayScore}
+              onChange={(e) => setAwayScore(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              disabled={disabled || savingResult}
+              className="h-9 w-14 text-center text-sm font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span className="text-xs font-bold text-muted-foreground">{match.away_team.code}</span>
+            <Button
+              type="button"
+              size="sm"
+              variant={match.status === "finished" ? "outline" : "default"}
+              disabled={disabled || savingResult}
+              onClick={async () => {
+                setSavingResult(true)
+                try {
+                  await onSaveResult(match.id, homeScore, awayScore)
+                } finally {
+                  setSavingResult(false)
+                }
+              }}
+            >
+              {savingResult ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Check className="mr-1 h-4 w-4" />
+                  {match.status === "finished" ? "Atualizar" : "Salvar resultado"}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
       <div className="flex shrink-0 gap-2">
@@ -152,7 +215,9 @@ export function AdminMatches() {
 
     const { data: matchData } = await supabase
       .from("matches")
-      .select("id, match_date, stage, group_name, status, home_team:home_team_id(id, name, code, group_name), away_team:away_team_id(id, name, code, group_name)")
+      .select(
+        "id, home_score, away_score, match_date, stage, group_name, status, home_team:home_team_id(id, name, code, group_name), away_team:away_team_id(id, name, code, group_name)",
+      )
       .order("match_date", { ascending: true })
 
     if (matchData) {
@@ -160,6 +225,8 @@ export function AdminMatches() {
         id: m.id as string,
         home_team: m.home_team as Team,
         away_team: m.away_team as Team,
+        home_score: m.home_score as number | null,
+        away_score: m.away_score as number | null,
         match_date: m.match_date as string,
         stage: m.stage as string,
         group_name: m.group_name as string | null,
@@ -202,6 +269,19 @@ export function AdminMatches() {
       setMatchDate("")
       setGroupName("")
       loadData()
+    }
+    setIsSubmitting(false)
+  }
+
+  const handleSaveMatchResult = async (matchId: string, home: number, away: number) => {
+    setIsSubmitting(true)
+    setError(null)
+    const supabase = createClient()
+    const { error: err } = await applyMatchResultAndUpdateBets(supabase, matchId, home, away)
+    if (err) {
+      setError(err)
+    } else {
+      await loadData()
     }
     setIsSubmitting(false)
   }
@@ -327,6 +407,10 @@ export function AdminMatches() {
       <Card>
         <CardHeader>
           <CardTitle className="text-card-foreground">Partidas Cadastradas ({matches.length})</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Em cada partida: ajuste data se precisar e registe o <strong className="font-medium text-foreground">resultado final</strong>. Ao
+            salvar, o sistema compara com as apostas e soma pontos nos perfis (mesma regra da aba Pontuacao).
+          </p>
         </CardHeader>
         <CardContent>
           {matches.length === 0 ? (
@@ -362,6 +446,7 @@ export function AdminMatches() {
                                 stageLabelFn={stageLabel}
                                 disabled={isSubmitting}
                                 onSaveDate={handleUpdateMatchDate}
+                                onSaveResult={handleSaveMatchResult}
                                 onDelete={handleDelete}
                               />
                             ))}
@@ -381,6 +466,7 @@ export function AdminMatches() {
                         stageLabelFn={stageLabel}
                         disabled={isSubmitting}
                         onSaveDate={handleUpdateMatchDate}
+                        onSaveResult={handleSaveMatchResult}
                         onDelete={handleDelete}
                       />
                     ))}

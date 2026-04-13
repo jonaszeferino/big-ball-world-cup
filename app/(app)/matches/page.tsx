@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Trophy, Calendar } from "lucide-react"
 import { getCountryFlag } from "@/lib/country-flags"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Team {
   id: string
@@ -62,18 +64,18 @@ interface OfficialResult {
 
 const GROUPS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
 
-function sortMatchesByDateAsc(matches: Match[]): Match[] {
-  return [...matches].sort(
+function sortMatchesByDate(matches: Match[], order: "asc" | "desc"): Match[] {
+  const sorted = [...matches].sort(
     (a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime(),
   )
+  return order === "asc" ? sorted : sorted.reverse()
 }
 
 function matchesForStage(matches: Match[], stageValue: string): Match[] {
-  const filtered = matches.filter((m) => {
+  return matches.filter((m) => {
     if (stageValue === "final") return m.stage === "final" || m.stage === "third_place"
     return m.stage === stageValue
   })
-  return sortMatchesByDateAsc(filtered)
 }
 
 export default function MatchesPage() {
@@ -85,6 +87,10 @@ export default function MatchesPage() {
   const [loading, setLoading] = useState(true)
   const [mainView, setMainView] = useState<"partidas" | "classificacao">("partidas")
   const [activeTab, setActiveTab] = useState("group")
+  /** Fase de grupos: "all" ou letra do grupo (A, B, …). */
+  const [groupFilter, setGroupFilter] = useState<string>("all")
+  /** Ordenação por data do jogo. */
+  const [dateOrder, setDateOrder] = useState<"asc" | "desc">("asc")
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -225,6 +231,14 @@ export default function MatchesPage() {
     },
     [officialResults],
   )
+
+  const groupLettersInData = useMemo(() => {
+    const set = new Set<string>()
+    for (const m of matches) {
+      if (m.stage === "group" && m.group_name) set.add(m.group_name)
+    }
+    return [...set].sort((a, b) => a.localeCompare(b))
+  }, [matches])
 
   if (loading) {
     return (
@@ -383,7 +397,7 @@ export default function MatchesPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Partidas</h1>
         <p className="text-sm text-muted-foreground">
-          Classificacao dos grupos e apostas por fase — partidas ordenadas da data mais proxima.
+          Classificacao dos grupos e apostas por fase. Use os filtros abaixo para grupo e ordem da data.
         </p>
       </div>
 
@@ -413,8 +427,49 @@ export default function MatchesPage() {
               ))}
             </TabsList>
 
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              {activeTab === "group" && (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="filter-group" className="text-xs text-muted-foreground">
+                    Grupo
+                  </Label>
+                  <Select value={groupFilter} onValueChange={setGroupFilter}>
+                    <SelectTrigger id="filter-group" className="w-full min-w-[200px] sm:w-[220px]">
+                      <SelectValue placeholder="Grupo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os grupos</SelectItem>
+                      {groupLettersInData.map((g) => (
+                        <SelectItem key={g} value={g}>
+                          Grupo {g}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="grid gap-1.5">
+                <Label htmlFor="filter-date" className="text-xs text-muted-foreground">
+                  Ordem por data do jogo
+                </Label>
+                <Select value={dateOrder} onValueChange={(v) => setDateOrder(v as "asc" | "desc")}>
+                  <SelectTrigger id="filter-date" className="w-full min-w-[200px] sm:w-[280px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asc">Crescente (jogo mais cedo primeiro)</SelectItem>
+                    <SelectItem value="desc">Decrescente (jogo mais tarde primeiro)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {stages.map((stage) => {
-              const stageList = matchesForStage(matches, stage.value)
+              let stageList = matchesForStage(matches, stage.value)
+              if (stage.value === "group" && groupFilter !== "all") {
+                stageList = stageList.filter((m) => m.group_name === groupFilter)
+              }
+              stageList = sortMatchesByDate(stageList, dateOrder)
               const grouped = stageList.reduce<Record<string, Match[]>>((acc, match) => {
                 const key = match.group_name || "Playoff"
                 if (!acc[key]) acc[key] = []
@@ -439,7 +494,7 @@ export default function MatchesPage() {
                         <>
                           <h2 className="text-xl font-semibold text-foreground">Apostas</h2>
                           <p className="-mt-2 text-sm text-muted-foreground">
-                            Ordenado por data (mais proxima primeiro).
+                            Ordem por data conforme o filtro acima.
                           </p>
                           <div className="grid gap-3 sm:grid-cols-2">
                             {stageList.map((match) => (
@@ -460,7 +515,7 @@ export default function MatchesPage() {
                   ) : stage.value === "group" ? (
                     <div className="flex flex-col gap-6">
                       <p className="text-sm text-muted-foreground">
-                        Ordem: partidas mais proximas primeiro dentro de cada grupo.
+                        Filtre por grupo e ordene por data com os controlos acima.
                       </p>
                       {Object.entries(grouped)
                         .sort(([a], [b]) => a.localeCompare(b))
@@ -483,7 +538,7 @@ export default function MatchesPage() {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      <p className="text-sm text-muted-foreground">Ordenado por data (mais proxima primeiro).</p>
+                      <p className="text-sm text-muted-foreground">Ordem por data conforme o filtro acima.</p>
                       <div className="grid gap-3 sm:grid-cols-2">
                         {stageList.map((match) => (
                           <MatchCard

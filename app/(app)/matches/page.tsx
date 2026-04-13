@@ -78,6 +78,26 @@ function matchesForStage(matches: Match[], stageValue: string): Match[] {
   })
 }
 
+function groupMatchesByGroupName(matches: Match[]): Record<string, Match[]> {
+  return matches.reduce<Record<string, Match[]>>((acc, m) => {
+    const g = m.group_name ?? "?"
+    if (!acc[g]) acc[g] = []
+    acc[g].push(m)
+    return acc
+  }, {})
+}
+
+function sortGroupKeys(keys: string[]): string[] {
+  return [...keys].sort((a, b) => {
+    const ia = GROUPS.indexOf(a)
+    const ib = GROUPS.indexOf(b)
+    if (ia !== -1 && ib !== -1) return ia - ib
+    if (ia !== -1) return -1
+    if (ib !== -1) return 1
+    return a.localeCompare(b)
+  })
+}
+
 export default function MatchesPage() {
   const [matches, setMatches] = useState<Match[]>([])
   const [teams, setTeams] = useState<Team[]>([])
@@ -87,9 +107,9 @@ export default function MatchesPage() {
   const [loading, setLoading] = useState(true)
   const [mainView, setMainView] = useState<"partidas" | "classificacao">("partidas")
   const [activeTab, setActiveTab] = useState("group")
-  /** Fase de grupos: "all" ou letra do grupo (A, B, …). */
-  const [groupFilter, setGroupFilter] = useState<string>("all")
-  /** Ordenação por data do jogo. */
+  /** Fase de grupos: lista por letra de grupo ou lista única por data. */
+  const [groupLayout, setGroupLayout] = useState<"group" | "date">("date")
+  /** Ordenação por data do jogo (só aplica em lista por data). */
   const [dateOrder, setDateOrder] = useState<"asc" | "desc">("asc")
 
   const loadData = useCallback(async () => {
@@ -231,14 +251,6 @@ export default function MatchesPage() {
     },
     [officialResults],
   )
-
-  const groupLettersInData = useMemo(() => {
-    const set = new Set<string>()
-    for (const m of matches) {
-      if (m.stage === "group" && m.group_name) set.add(m.group_name)
-    }
-    return [...set].sort((a, b) => a.localeCompare(b))
-  }, [matches])
 
   if (loading) {
     return (
@@ -397,7 +409,8 @@ export default function MatchesPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Partidas</h1>
         <p className="text-sm text-muted-foreground">
-          Classificacao dos grupos e apostas por fase. Use os filtros abaixo para grupo e ordem da data.
+          Classificacao dos grupos e apostas por fase. Na fase de grupos, escolha entre ver os jogos agrupados por letra ou
+          uma lista única ordenada por data.
         </p>
       </div>
 
@@ -428,54 +441,72 @@ export default function MatchesPage() {
             </TabsList>
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-              {activeTab === "group" && (
+              {activeTab === "group" ? (
+                <>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="filter-group-layout" className="text-xs text-muted-foreground">
+                      Fase de grupos
+                    </Label>
+                    <Select
+                      value={groupLayout}
+                      onValueChange={(v) => setGroupLayout(v as "group" | "date")}
+                    >
+                      <SelectTrigger id="filter-group-layout" className="w-full min-w-[200px] sm:w-[280px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="date">Ordenar por data</SelectItem>
+                        <SelectItem value="group">Mostrar por grupo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="filter-date" className="text-xs text-muted-foreground">
+                      Ordem da data
+                    </Label>
+                    <Select
+                      value={dateOrder}
+                      onValueChange={(v) => setDateOrder(v as "asc" | "desc")}
+                      disabled={groupLayout === "group"}
+                    >
+                      <SelectTrigger id="filter-date" className="w-full min-w-[200px] sm:w-[280px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="asc">Crescente (mais cedo primeiro)</SelectItem>
+                        <SelectItem value="desc">Decrescente (mais tarde primeiro)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
                 <div className="grid gap-1.5">
-                  <Label htmlFor="filter-group" className="text-xs text-muted-foreground">
-                    Grupo
+                  <Label htmlFor="filter-date" className="text-xs text-muted-foreground">
+                    Ordem da data
                   </Label>
-                  <Select value={groupFilter} onValueChange={setGroupFilter}>
-                    <SelectTrigger id="filter-group" className="w-full min-w-[200px] sm:w-[220px]">
-                      <SelectValue placeholder="Grupo" />
+                  <Select value={dateOrder} onValueChange={(v) => setDateOrder(v as "asc" | "desc")}>
+                    <SelectTrigger id="filter-date" className="w-full min-w-[200px] sm:w-[280px]">
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos os grupos</SelectItem>
-                      {groupLettersInData.map((g) => (
-                        <SelectItem key={g} value={g}>
-                          Grupo {g}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="asc">Crescente (mais cedo primeiro)</SelectItem>
+                      <SelectItem value="desc">Decrescente (mais tarde primeiro)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
-              <div className="grid gap-1.5">
-                <Label htmlFor="filter-date" className="text-xs text-muted-foreground">
-                  Ordem por data do jogo
-                </Label>
-                <Select value={dateOrder} onValueChange={(v) => setDateOrder(v as "asc" | "desc")}>
-                  <SelectTrigger id="filter-date" className="w-full min-w-[200px] sm:w-[280px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="asc">Crescente (jogo mais cedo primeiro)</SelectItem>
-                    <SelectItem value="desc">Decrescente (jogo mais tarde primeiro)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             {stages.map((stage) => {
-              let stageList = matchesForStage(matches, stage.value)
-              if (stage.value === "group" && groupFilter !== "all") {
-                stageList = stageList.filter((m) => m.group_name === groupFilter)
-              }
-              stageList = sortMatchesByDate(stageList, dateOrder)
-              const grouped = stageList.reduce<Record<string, Match[]>>((acc, match) => {
-                const key = match.group_name || "Playoff"
-                if (!acc[key]) acc[key] = []
-                acc[key].push(match)
-                return acc
-              }, {})
+              const rawStageMatches = matchesForStage(matches, stage.value)
+              const stageList =
+                stage.value === "group" && groupLayout === "group"
+                  ? rawStageMatches
+                  : sortMatchesByDate(rawStageMatches, dateOrder)
+              const groupedForStage =
+                stage.value === "group" && groupLayout === "group"
+                  ? groupMatchesByGroupName(rawStageMatches)
+                  : null
 
               const emptyPhase = (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card py-16 shadow-sm">
@@ -510,18 +541,18 @@ export default function MatchesPage() {
                         </>
                       )}
                     </div>
-                  ) : stageList.length === 0 ? (
+                  ) : rawStageMatches.length === 0 ? (
                     emptyPhase
-                  ) : stage.value === "group" ? (
-                    <div className="flex flex-col gap-6">
+                  ) : stage.value === "group" && groupLayout === "group" && groupedForStage ? (
+                    <div className="flex flex-col gap-8">
                       <p className="text-sm text-muted-foreground">
-                        Filtre por grupo e ordene por data com os controlos acima.
+                        Em cada grupo, os jogos seguem ordem cronológica (mais cedo primeiro).
                       </p>
-                      {Object.entries(grouped)
-                        .sort(([a], [b]) => a.localeCompare(b))
-                        .map(([groupName, groupMatches]) => (
-                          <div key={groupName}>
-                            <h3 className="mb-3 text-lg font-semibold text-foreground">Grupo {groupName}</h3>
+                      {sortGroupKeys(Object.keys(groupedForStage)).map((g) => {
+                        const groupMatches = sortMatchesByDate(groupedForStage[g] ?? [], "asc")
+                        return (
+                          <div key={g}>
+                            <h2 className="mb-3 text-lg font-semibold text-foreground">Grupo {g}</h2>
                             <div className="grid gap-3 sm:grid-cols-2">
                               {groupMatches.map((match) => (
                                 <MatchCard
@@ -534,7 +565,25 @@ export default function MatchesPage() {
                               ))}
                             </div>
                           </div>
+                        )
+                      })}
+                    </div>
+                  ) : stage.value === "group" ? (
+                    <div className="flex flex-col gap-4">
+                      <p className="text-sm text-muted-foreground">
+                        Lista única ordenada pela data; o grupo de cada jogo aparece no cartão.
+                      </p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {stageList.map((match) => (
+                          <MatchCard
+                            key={match.id}
+                            match={match}
+                            bet={bets.find((b) => b.match_id === match.id) || null}
+                            userId={userId!}
+                            onBetPlaced={loadData}
+                          />
                         ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">

@@ -95,15 +95,19 @@ export function AdminOfficialResults() {
 
   const loadMatches = useCallback(async () => {
     const supabase = createClient()
-    const { data } = await supabase
-      .from("matches")
-      .select(
-        "id, match_date, group_name, stage, status, home_score, away_score, home_penalty_score, away_penalty_score, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)",
-      )
-      .order("match_date", { ascending: true })
+    const selectWithPens =
+      "id, match_date, group_name, stage, status, home_score, away_score, home_penalty_score, away_penalty_score, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)"
+    const selectBase =
+      "id, match_date, group_name, stage, status, home_score, away_score, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)"
 
-    if (data) {
-      const mapped = data.map((m: Record<string, unknown>) => ({
+    const first = await supabase.from("matches").select(selectWithPens).order("match_date", { ascending: true })
+    const rows =
+      first.error != null
+        ? (await supabase.from("matches").select(selectBase).order("match_date", { ascending: true })).data
+        : first.data
+
+    if (rows) {
+      const mapped = rows.map((m: Record<string, unknown>) => ({
         id: m.id as string,
         home_team: m.home_team as { id: string; name: string; code: string },
         away_team: m.away_team as { id: string; name: string; code: string },
@@ -113,13 +117,15 @@ export function AdminOfficialResults() {
         status: m.status as string,
         home_score: m.home_score as number | null,
         away_score: m.away_score as number | null,
-        home_penalty_score: m.home_penalty_score as number | null,
-        away_penalty_score: m.away_penalty_score as number | null,
+        home_penalty_score: (m.home_penalty_score as number | null | undefined) ?? null,
+        away_penalty_score: (m.away_penalty_score as number | null | undefined) ?? null,
       }))
       setMatches(mapped)
 
       const { data: saved } = await supabase.from("teams_results").select("*")
       setSavedResults((saved || []) as SavedResult[])
+    } else {
+      setMatches([])
     }
     setIsLoading(false)
   }, [])

@@ -22,6 +22,8 @@ interface Match {
   away_team: Team
   home_score: number | null
   away_score: number | null
+  home_penalty_score: number | null
+  away_penalty_score: number | null
   match_date: string
   stage: string
   group_name: string | null
@@ -33,6 +35,7 @@ interface Bet {
   match_id: string
   predicted_home_score: number
   predicted_away_score: number
+  predicted_advances_team_id: string | null
   points_earned: number
 }
 
@@ -99,7 +102,9 @@ export default function MatchesPage() {
 
     const { data: matchData } = await supabase
       .from("matches")
-      .select("id, home_score, away_score, match_date, stage, group_name, status, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)")
+      .select(
+        "id, home_score, away_score, home_penalty_score, away_penalty_score, match_date, stage, group_name, status, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)",
+      )
       .order("match_date", { ascending: true })
 
     if (matchData) {
@@ -109,6 +114,8 @@ export default function MatchesPage() {
         away_team: m.away_team as Team,
         home_score: m.home_score as number | null,
         away_score: m.away_score as number | null,
+        home_penalty_score: (m.home_penalty_score as number | null | undefined) ?? null,
+        away_penalty_score: (m.away_penalty_score as number | null | undefined) ?? null,
         match_date: m.match_date as string,
         stage: m.stage as string,
         group_name: m.group_name as string | null,
@@ -119,10 +126,18 @@ export default function MatchesPage() {
 
     const { data: betData } = await supabase
       .from("bets")
-      .select("id, match_id, predicted_home_score, predicted_away_score, points_earned")
+      .select("id, match_id, predicted_home_score, predicted_away_score, predicted_advances_team_id, points_earned")
       .eq("user_id", user.id)
 
-    if (betData) setBets(betData)
+    if (betData) {
+      setBets(
+        betData.map((b) => ({
+          ...b,
+          predicted_advances_team_id:
+            (b as { predicted_advances_team_id?: string | null }).predicted_advances_team_id ?? null,
+        })) as Bet[],
+      )
+    }
 
     const { data: resultsData } = await supabase
       .from("teams_results")

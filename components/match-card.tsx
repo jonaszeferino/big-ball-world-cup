@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { getCountryFlag } from "@/lib/country-flags"
+import { isKnockoutEliminationStage } from "@/lib/match-stage"
 
 interface Match {
   id: string
@@ -18,6 +19,8 @@ interface Match {
   away_team: { id: string; name: string; code: string }
   home_score: number | null
   away_score: number | null
+  home_penalty_score: number | null
+  away_penalty_score: number | null
   match_date: string
   stage: string
   group_name: string | null
@@ -29,6 +32,7 @@ interface Bet {
   match_id: string
   predicted_home_score: number
   predicted_away_score: number
+  predicted_advances_team_id: string | null
   points_earned: number
 }
 
@@ -42,8 +46,21 @@ interface MatchCardProps {
 export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
   const [homeScore, setHomeScore] = useState(bet?.predicted_home_score ?? 0)
   const [awayScore, setAwayScore] = useState(bet?.predicted_away_score ?? 0)
+  const [advancesTeamId, setAdvancesTeamId] = useState<string | null>(bet?.predicted_advances_team_id ?? null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const advancesRequired = isKnockoutEliminationStage(match.stage) && homeScore === awayScore
+
+  useEffect(() => {
+    setAdvancesTeamId(bet?.predicted_advances_team_id ?? null)
+  }, [bet?.id, bet?.predicted_advances_team_id])
+
+  useEffect(() => {
+    if (!isKnockoutEliminationStage(match.stage) || homeScore !== awayScore) {
+      setAdvancesTeamId(null)
+    }
+  }, [match.stage, homeScore, awayScore])
 
   const isFinished = match.status === "finished"
   const isLocked = match.status !== "scheduled"
@@ -58,6 +75,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
 
   const stageLabels: Record<string, string> = {
     group: "Fase de Grupos",
+    round_of_32: "16-avos",
     round_of_16: "Oitavas",
     quarter_final: "Quartas",
     semi_final: "Semi",
@@ -76,7 +94,16 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
       return
     }
 
+    if (advancesRequired && !advancesTeamId) {
+      setError("Em caso de empate no mata-mata, indique quem passa à seguinte fase.")
+      setIsSubmitting(false)
+      return
+    }
+
     const supabase = createClient()
+
+    const advancesPayload =
+      isKnockoutEliminationStage(match.stage) && homeScore === awayScore ? advancesTeamId : null
 
     try {
       if (hasBet) {
@@ -85,6 +112,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
           .update({
             predicted_home_score: homeScore,
             predicted_away_score: awayScore,
+            predicted_advances_team_id: advancesPayload,
           })
           .eq("id", bet.id)
         if (updateErr) throw updateErr
@@ -94,6 +122,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
           match_id: match.id,
           predicted_home_score: homeScore,
           predicted_away_score: awayScore,
+          predicted_advances_team_id: advancesPayload,
         })
         if (insertErr) throw insertErr
       }
@@ -143,10 +172,21 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
           </div>
 
           {isFinished ? (
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-card-foreground">{match.home_score}</span>
-              <span className="text-sm text-muted-foreground">x</span>
-              <span className="text-2xl font-bold text-card-foreground">{match.away_score}</span>
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-card-foreground">{match.home_score}</span>
+                <span className="text-sm text-muted-foreground">x</span>
+                <span className="text-2xl font-bold text-card-foreground">{match.away_score}</span>
+              </div>
+              {match.home_score != null &&
+                match.away_score != null &&
+                match.home_score === match.away_score &&
+                match.home_penalty_score != null &&
+                match.away_penalty_score != null && (
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    Pen. {match.home_penalty_score}–{match.away_penalty_score}
+                  </span>
+                )}
             </div>
           ) : (
             <div className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
@@ -225,10 +265,38 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
               </div>
             </div>
 
+            {advancesRequired && (
+              <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+                <span className="text-xs font-medium text-foreground">Empate: quem passa à seguinte fase?</span>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant={advancesTeamId === match.home_team.id ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1 min-w-[120px]"
+                    disabled={!canBet}
+                    onClick={() => setAdvancesTeamId(match.home_team.id)}
+                  >
+                    {getCountryFlag(match.home_team.name)} {match.home_team.code}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={advancesTeamId === match.away_team.id ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1 min-w-[120px]"
+                    disabled={!canBet}
+                    onClick={() => setAdvancesTeamId(match.away_team.id)}
+                  >
+                    {getCountryFlag(match.away_team.name)} {match.away_team.code}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <Button
               size="sm"
               onClick={handleSubmit}
-              disabled={isSubmitting || !canBet}
+              disabled={isSubmitting || !canBet || (advancesRequired && !advancesTeamId)}
               className="w-full"
             >
               <Check className="mr-1 h-4 w-4" />
@@ -248,9 +316,18 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
         )}
 
         {hasBet && isLocked && (
-          <div className="mt-3 flex items-center justify-between rounded-md bg-muted px-3 py-2">
+          <div className="mt-3 flex flex-col gap-1 rounded-md bg-muted px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-xs text-muted-foreground">
               Sua aposta: {bet.predicted_home_score} x {bet.predicted_away_score}
+              {bet.predicted_advances_team_id && (
+                <span className="text-foreground">
+                  {" "}
+                  — passa:{" "}
+                  {bet.predicted_advances_team_id === match.home_team.id
+                    ? match.home_team.name
+                    : match.away_team.name}
+                </span>
+              )}
             </span>
             {getPointsBadge()}
           </div>

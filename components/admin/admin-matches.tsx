@@ -49,18 +49,21 @@ function toDatetimeLocalValue(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function isEncerradaNoBolao(m: Match) {
-  return m.status === "finished" && m.home_score !== null && m.away_score !== null
+function matchOfficialCode(m: Match) {
+  return `${m.home_team.code}-${m.away_team.code}`
 }
 
 function RegisteredMatchRow({
   match,
+  hasOfficialResult,
   stageLabelFn,
   disabled,
   onSaveDate,
   onDelete,
 }: {
   match: Match
+  /** Encerrada na UI só quando existe registo na aba Resultados Oficiais (teams_results). */
+  hasOfficialResult: boolean
   stageLabelFn: (s: string) => string
   disabled: boolean
   onSaveDate: (matchId: string, datetimeLocal: string) => void | Promise<void>
@@ -72,14 +75,16 @@ function RegisteredMatchRow({
     setDateValue(toDatetimeLocalValue(match.match_date))
   }, [match.id, match.match_date])
 
-  const encerrada = isEncerradaNoBolao(match)
+  const encerrada = hasOfficialResult
+  const bolaoFechadoSemOficial =
+    !hasOfficialResult && match.status === "finished" && match.home_score !== null && match.away_score !== null
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 p-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-foreground">
-            {match.home_team.code} vs {match.away_team.code}
+            {match.home_team.name} <span className="text-muted-foreground">vs</span> {match.away_team.name}
           </span>
           <Badge variant="outline" className="text-xs border-border text-muted-foreground">
             {stageLabelFn(match.stage)}
@@ -90,18 +95,22 @@ function RegisteredMatchRow({
             className={
               encerrada
                 ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 text-xs"
-                : match.status === "live"
-                  ? "bg-destructive/10 text-destructive text-xs"
-                  : "text-xs"
+                : bolaoFechadoSemOficial
+                  ? "bg-amber-500/15 text-amber-900 dark:text-amber-100 text-xs"
+                  : match.status === "live"
+                    ? "bg-destructive/10 text-destructive text-xs"
+                    : "text-xs"
             }
           >
             {encerrada
-              ? "Encerrada (resultado na aba Oficiais)"
-              : match.status === "scheduled"
-                ? "Agendada"
-                : match.status === "live"
-                  ? "Ao Vivo"
-                  : "Em aberto"}
+              ? "Encerrada (Resultados Oficiais)"
+              : bolaoFechadoSemOficial
+                ? "Placar no bolão — registe em Oficiais"
+                : match.status === "scheduled"
+                  ? "Agendada"
+                  : match.status === "live"
+                    ? "Ao Vivo"
+                    : "Em aberto"}
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -147,6 +156,8 @@ function RegisteredMatchRow({
 export function AdminMatches() {
   const [teams, setTeams] = useState<Team[]>([])
   const [matches, setMatches] = useState<Match[]>([])
+  /** Códigos `home-away` presentes em teams_results (aba Resultados Oficiais). */
+  const [officialMatchCodes, setOfficialMatchCodes] = useState<Set<string>>(() => new Set())
   const [homeTeamId, setHomeTeamId] = useState("")
   const [awayTeamId, setAwayTeamId] = useState("")
   const [matchDate, setMatchDate] = useState("")
@@ -184,6 +195,9 @@ export function AdminMatches() {
       }))
       setMatches(mapped)
     }
+
+    const { data: officialRows } = await supabase.from("teams_results").select("code")
+    setOfficialMatchCodes(new Set((officialRows ?? []).map((r) => r.code as string)))
   }, [])
 
   useEffect(() => {
@@ -390,6 +404,7 @@ export function AdminMatches() {
                               <RegisteredMatchRow
                                 key={match.id}
                                 match={match}
+                                hasOfficialResult={officialMatchCodes.has(matchOfficialCode(match))}
                                 stageLabelFn={stageLabel}
                                 disabled={isSubmitting}
                                 onSaveDate={handleUpdateMatchDate}
@@ -409,6 +424,7 @@ export function AdminMatches() {
                       <RegisteredMatchRow
                         key={match.id}
                         match={match}
+                        hasOfficialResult={officialMatchCodes.has(matchOfficialCode(match))}
                         stageLabelFn={stageLabel}
                         disabled={isSubmitting}
                         onSaveDate={handleUpdateMatchDate}

@@ -43,6 +43,8 @@ export default function RankingPage() {
         .from("matches")
         .select("id")
         .eq("status", "finished")
+        .not("home_score", "is", null)
+        .not("away_score", "is", null)
 
       const finishedIds = new Set((finishedMatches ?? []).map((m) => m.id))
 
@@ -118,8 +120,8 @@ export default function RankingPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Ranking</h1>
         <p className="text-sm text-muted-foreground">
-          Classificacao com base apenas em partidas <strong className="font-medium text-foreground">concluidas</strong> (resultado
-          oficial registado no admin). Apostas em jogos ainda nao realizados nao entram.
+          So entram jogos com <strong className="font-medium text-foreground">placar oficial</strong> guardado no admin (Partidas →
+          confirmar resultado). Partidas só agendadas ou sem placar nao pontuam.
         </p>
       </div>
 

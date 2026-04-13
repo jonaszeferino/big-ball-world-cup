@@ -33,7 +33,6 @@ export async function applyMatchResultAndUpdateBets(
       home_score: homeScore,
       away_score: awayScore,
       status: "finished",
-      completed_at: new Date().toISOString(),
     })
     .eq("id", matchId)
 
@@ -85,5 +84,62 @@ export async function applyMatchResultAndUpdateBets(
     }
   }
 
+  return { error: null }
+}
+
+/**
+ * Volta a partida para "agendada", apaga placar e zera pontos das apostas (e ajusta perfis).
+ * Use se tiver encerrado por engano ou para testes.
+ */
+export async function reopenMatchAndResetBets(
+  supabase: SupabaseClient,
+  matchId: string,
+): Promise<{ error: string | null }> {
+  const { data: bets } = await supabase
+    .from("bets")
+    .select("id, user_id, points_earned")
+    .eq("match_id", matchId)
+
+  const deltaByUser: Record<string, number> = {}
+
+  for (const bet of bets ?? []) {
+    const oldPoints = bet.points_earned ?? 0
+    if (oldPoints !== 0) {
+      const { error: betErr } = await supabase
+        .from("bets")
+        .update({ points_earned: 0 })
+        .eq("id", bet.id)
+      if (betErr) return { error: betErr.message }
+      deltaByUser[bet.user_id] = (deltaByUser[bet.user_id] ?? 0) - oldPoints
+    }
+  }
+
+  for (const [userId, delta] of Object.entries(deltaByUser)) {
+    if (delta === 0) continue
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("total_points")
+      .eq("id", userId)
+      .single()
+
+    if (profile) {
+      const { error: profErr } = await supabase
+        .from("profiles")
+        .update({ total_points: Math.max(0, profile.total_points + delta) })
+        .eq("id", userId)
+      if (profErr) return { error: profErr.message }
+    }
+  }
+
+  const { error: matchErr } = await supabase
+    .from("matches")
+    .update({
+      status: "scheduled",
+      home_score: null,
+      away_score: null,
+    })
+    .eq("id", matchId)
+
+  if (matchErr) return { error: matchErr.message }
   return { error: null }
 }

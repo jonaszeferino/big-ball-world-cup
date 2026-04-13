@@ -33,6 +33,7 @@ export async function applyMatchResultAndUpdateBets(
       home_score: homeScore,
       away_score: awayScore,
       status: "finished",
+      completed_at: new Date().toISOString(),
     })
     .eq("id", matchId)
 

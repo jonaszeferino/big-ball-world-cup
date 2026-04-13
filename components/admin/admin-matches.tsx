@@ -10,9 +10,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, RotateCcw, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { reopenMatchAndResetBets } from "@/lib/match-result-scoring"
 
 interface Team {
   id: string
@@ -60,6 +61,7 @@ function RegisteredMatchRow({
   stageLabelFn,
   disabled,
   onSaveDate,
+  onReopenBolao,
   onDelete,
 }: {
   match: Match
@@ -70,6 +72,7 @@ function RegisteredMatchRow({
   stageLabelFn: (s: string) => string
   disabled: boolean
   onSaveDate: (matchId: string, datetimeLocal: string) => void | Promise<void>
+  onReopenBolao: (match: Match) => void | Promise<void>
   onDelete: (id: string) => void
 }) {
   const [dateValue, setDateValue] = useState(() => toDatetimeLocalValue(match.match_date))
@@ -124,7 +127,8 @@ function RegisteredMatchRow({
           {format(new Date(match.match_date), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}
         </p>
         <p className="text-[11px] text-muted-foreground">
-          Placar oficial e ranking: aba <span className="font-medium text-foreground">Resultados Oficiais</span>.
+          Placar oficial e encerramento: aba <span className="font-medium text-foreground">Resultados Oficiais</span>.
+          {bolaoEncerrado ? " Para testes, usa Reabrir bolão ao lado." : ""}
         </p>
         <div className="grid w-full max-w-xs gap-1.5">
           <Label className="text-xs">Alterar data e hora</Label>
@@ -136,7 +140,20 @@ function RegisteredMatchRow({
           />
         </div>
       </div>
-      <div className="flex shrink-0 gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {bolaoEncerrado && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={disabled}
+            onClick={() => void onReopenBolao(match)}
+          >
+            <RotateCcw className="h-4 w-4" />
+            Reabrir bolão
+          </Button>
+        )}
         <Button
           type="button"
           size="sm"
@@ -266,6 +283,31 @@ export function AdminMatches() {
     const supabase = createClient()
     await supabase.from("matches").delete().eq("id", id)
     loadData()
+  }
+
+  const handleReopenBolao = async (match: Match) => {
+    if (
+      !window.confirm(
+        "Reabrir esta partida no bolão? Os pontos deste jogo nas apostas são zerados, o placar sai da partida (matches) e a linha em teams_results é removida, se existir.",
+      )
+    ) {
+      return
+    }
+    setIsSubmitting(true)
+    setError(null)
+    const supabase = createClient()
+    const code = matchOfficialCode(match)
+
+    const { error: reopenErr } = await reopenMatchAndResetBets(supabase, match.id)
+    if (reopenErr) {
+      setError(reopenErr)
+      setIsSubmitting(false)
+      return
+    }
+
+    await supabase.from("teams_results").delete().eq("code", code)
+    await loadData()
+    setIsSubmitting(false)
   }
 
   const stageLabel = (s: string) => STAGES.find((st) => st.value === s)?.label || s
@@ -418,6 +460,7 @@ export function AdminMatches() {
                                 stageLabelFn={stageLabel}
                                 disabled={isSubmitting}
                                 onSaveDate={handleUpdateMatchDate}
+                                onReopenBolao={handleReopenBolao}
                                 onDelete={handleDelete}
                               />
                             ))}
@@ -439,6 +482,7 @@ export function AdminMatches() {
                         stageLabelFn={stageLabel}
                         disabled={isSubmitting}
                         onSaveDate={handleUpdateMatchDate}
+                        onReopenBolao={handleReopenBolao}
                         onDelete={handleDelete}
                       />
                     ))}

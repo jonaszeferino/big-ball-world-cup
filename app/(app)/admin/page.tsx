@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2 } from "lucide-react"
 import { AdminTeams } from "@/components/admin/admin-teams"
 import { AdminMatches } from "@/components/admin/admin-matches"
-import { AdminResults } from "@/components/admin/admin-results"
 import { AdminOfficialResults } from "@/components/admin/admin-official-results"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
 
@@ -55,7 +54,6 @@ export default function AdminPage() {
           <TabsTrigger value="matches">Partidas</TabsTrigger>
           <TabsTrigger value="playoffs">Chaves Playoffs</TabsTrigger>
           <TabsTrigger value="official-results">Resultados Oficiais</TabsTrigger>
-          <TabsTrigger value="results">Pontuacao</TabsTrigger>
         </TabsList>
 
         <TabsContent value="teams" className="mt-4">
@@ -69,9 +67,6 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent value="official-results" className="mt-4">
           <AdminOfficialResults />
-        </TabsContent>
-        <TabsContent value="results" className="mt-4">
-          <AdminResults />
         </TabsContent>
       </Tabs>
     </div>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Check, Trash2, Loader2 } from "lucide-react"
+import { Check, Loader2, RotateCcw, Save } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { getCountryFlag } from "@/lib/country-flags"
@@ -20,6 +20,9 @@ interface Match {
   match_date: string
   group_name: string | null
   stage: string
+  status: string
+  home_score: number | null
+  away_score: number | null
 }
 
 interface TeamResult {
@@ -36,10 +39,51 @@ interface SavedResult {
   created_at: string
 }
 
+function resultCode(m: Match) {
+  return `${m.home_team.code}-${m.away_team.code}`
+}
+
+function getMatchResultLetters(homeGoals: number, awayGoals: number): { home: string; away: string } {
+  if (homeGoals > awayGoals) return { home: "W", away: "L" }
+  if (homeGoals < awayGoals) return { home: "L", away: "W" }
+  return { home: "T", away: "T" }
+}
+
+async function upsertTeamsResultsRow(
+  supabase: ReturnType<typeof createClient>,
+  match: Match,
+  homeGoals: number,
+  awayGoals: number,
+): Promise<{ error: string | null }> {
+  const code = resultCode(match)
+  const matchRes = getMatchResultLetters(homeGoals, awayGoals)
+  const row = {
+    name: `${match.home_team.code} vs ${match.away_team.code}`,
+    code,
+    group: match.group_name,
+    team_home: match.home_team.name,
+    team_away: match.away_team.name,
+    goals_home: homeGoals,
+    goals_away: awayGoals,
+    match_result_home: matchRes.home,
+    match_result_away: matchRes.away,
+  }
+
+  const { data: existing } = await supabase.from("teams_results").select("code").eq("code", code).maybeSingle()
+
+  if (existing) {
+    const { error } = await supabase.from("teams_results").update(row).eq("code", code)
+    return { error: error?.message ?? null }
+  }
+
+  const { error } = await supabase.from("teams_results").insert(row)
+  return { error: error?.message ?? null }
+}
+
 export function AdminOfficialResults() {
   const [matches, setMatches] = useState<Match[]>([])
-  const [results, setResults] = useState<Record<string, TeamResult>>({})
   const [savedResults, setSavedResults] = useState<SavedResult[]>([])
+  const [results, setResults] = useState<Record<string, TeamResult>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +92,9 @@ export function AdminOfficialResults() {
     const supabase = createClient()
     const { data } = await supabase
       .from("matches")
-      .select("id, match_date, group_name, stage, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)")
+      .select(
+        "id, match_date, group_name, stage, status, home_score, away_score, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)",
+      )
       .order("match_date", { ascending: true })
 
     if (data) {
@@ -59,6 +105,9 @@ export function AdminOfficialResults() {
         match_date: m.match_date as string,
         group_name: m.group_name as string | null,
         stage: m.stage as string,
+        status: m.status as string,
+        home_score: m.home_score as number | null,
+        away_score: m.away_score as number | null,
       }))
       setMatches(mapped)
 
@@ -72,32 +121,58 @@ export function AdminOfficialResults() {
     loadMatches()
   }, [loadMatches])
 
+  const savedByCode = useCallback(
+    (code: string) => savedResults.find((r) => r.code === code),
+    [savedResults],
+  )
+
+  const getDefaultScores = (match: Match): TeamResult => {
+    const sr = savedByCode(resultCode(match))
+    if (sr) return { home_goals: sr.goals_home, away_goals: sr.goals_away }
+    if (match.home_score != null && match.away_score != null) {
+      return { home_goals: match.home_score, away_goals: match.away_score }
+    }
+    return { home_goals: 0, away_goals: 0 }
+  }
+
+  const getScores = (match: Match): TeamResult => {
+    return results[match.id] ?? getDefaultScores(match)
+  }
+
   const updateResult = (matchId: string, field: "home_goals" | "away_goals", value: number) => {
-    setResults((prev) => ({
-      ...prev,
-      [matchId]: {
-        ...(prev[matchId] || { home_goals: 0, away_goals: 0 }),
-        [field]: Math.max(0, value),
-      },
-    }))
+    setResults((prev) => {
+      const m = matches.find((x) => x.id === matchId)
+      if (!m) return prev
+      const base = prev[matchId] ?? getDefaultScores(m)
+      return { ...prev, [matchId]: { ...base, [field]: Math.max(0, value) } }
+    })
   }
 
-  const getMatchResult = (homeGoals: number, awayGoals: number): { home: string; away: string } => {
-    if (homeGoals > awayGoals) {
-      return { home: "W", away: "L" }
-    }
-    if (homeGoals < awayGoals) {
-      return { home: "L", away: "W" }
-    }
-    return { home: "T", away: "T" }
+  const readGoals = (match: Match) => {
+    const s = getScores(match)
+    return { homeGoals: s.home_goals, awayGoals: s.away_goals }
   }
 
-  const handleSaveResult = async (match: Match) => {
+  const handleSaveOfficialOnly = async (match: Match) => {
     setError(null)
-    const raw = results[match.id]
-    const homeGoals = raw?.home_goals ?? 0
-    const awayGoals = raw?.away_goals ?? 0
+    const { homeGoals, awayGoals } = readGoals(match)
+    setIsSubmitting(true)
+    const supabase = createClient()
 
+    const { error: upErr } = await upsertTeamsResultsRow(supabase, match, homeGoals, awayGoals)
+    if (upErr) {
+      setError(upErr)
+      setIsSubmitting(false)
+      return
+    }
+
+    await loadMatches()
+    setIsSubmitting(false)
+  }
+
+  const handleCloseBolao = async (match: Match) => {
+    setError(null)
+    const { homeGoals, awayGoals } = readGoals(match)
     setIsSubmitting(true)
     const supabase = createClient()
 
@@ -108,39 +183,15 @@ export function AdminOfficialResults() {
       return
     }
 
-    const matchRes = getMatchResult(homeGoals, awayGoals)
-
-    const { error: insertErr } = await supabase.from("teams_results").insert({
-      name: `${match.home_team.code} vs ${match.away_team.code}`,
-      code: `${match.home_team.code}-${match.away_team.code}`,
-      group: match.group_name,
-      team_home: match.home_team.name,
-      team_away: match.away_team.name,
-      goals_home: homeGoals,
-      goals_away: awayGoals,
-      match_result_home: matchRes.home,
-      match_result_away: matchRes.away,
-    })
-
-    if (insertErr) {
+    const { error: upErr } = await upsertTeamsResultsRow(supabase, match, homeGoals, awayGoals)
+    if (upErr) {
       await reopenMatchAndResetBets(supabase, match.id)
-      setError(insertErr.message)
+      setError(upErr)
       setIsSubmitting(false)
       await loadMatches()
       return
     }
 
-    setSavedResults((prev) => [
-      ...prev,
-      {
-        code: `${match.home_team.code}-${match.away_team.code}`,
-        team_home: match.home_team.name,
-        team_away: match.away_team.name,
-        goals_home: homeGoals,
-        goals_away: awayGoals,
-        created_at: new Date().toISOString(),
-      },
-    ])
     setResults((prev) => {
       const next = { ...prev }
       delete next[match.id]
@@ -150,10 +201,10 @@ export function AdminOfficialResults() {
     setIsSubmitting(false)
   }
 
-  const handleDeleteResult = async (match: Match) => {
+  const handleReopenBolao = async (match: Match) => {
     if (
       !window.confirm(
-        "Remover este resultado? A partida volta a agendada no bolao, os pontos deste jogo sao zerados e a linha sai da tabela oficial.",
+        "Reabrir esta partida no bolão? Os pontos deste jogo são zerados, o placar sai da partida e a linha de resultado oficial é removida.",
       )
     ) {
       return
@@ -161,7 +212,7 @@ export function AdminOfficialResults() {
     setError(null)
     setIsSubmitting(true)
     const supabase = createClient()
-    const code = `${match.home_team.code}-${match.away_team.code}`
+    const code = resultCode(match)
 
     const { error: reopenErr } = await reopenMatchAndResetBets(supabase, match.id)
     if (reopenErr) {
@@ -171,7 +222,46 @@ export function AdminOfficialResults() {
     }
 
     await supabase.from("teams_results").delete().eq("code", code)
-    setSavedResults((prev) => prev.filter((r) => r.code !== code))
+    await loadMatches()
+    setIsSubmitting(false)
+  }
+
+  const handleReopenAll = async () => {
+    if (
+      !window.confirm(
+        "Reabrir TODAS as partidas no bolão e apagar todos os resultados oficiais? Isto zera pontos dos jogos fechados e limpa a tabela de grupos.",
+      )
+    ) {
+      return
+    }
+    setError(null)
+    setIsSubmitting(true)
+    const supabase = createClient()
+
+    const { data: finished } = await supabase.from("matches").select("id").eq("status", "finished")
+    for (const row of finished ?? []) {
+      const { error: e } = await reopenMatchAndResetBets(supabase, row.id as string)
+      if (e) {
+        setError(e)
+        setIsSubmitting(false)
+        await loadMatches()
+        return
+      }
+    }
+
+    const { data: allCodes } = await supabase.from("teams_results").select("code")
+    const codes = (allCodes ?? []).map((r) => r.code as string).filter(Boolean)
+    if (codes.length > 0) {
+      const { error: delErr } = await supabase.from("teams_results").delete().in("code", codes)
+      if (delErr) {
+        setError(delErr.message)
+        setIsSubmitting(false)
+        await loadMatches()
+        return
+      }
+    }
+
+    setResults({})
     await loadMatches()
     setIsSubmitting(false)
   }
@@ -185,7 +275,8 @@ export function AdminOfficialResults() {
     )
   }
 
-  const pendingMatches = matches.filter((m) => !savedResults.some((r) => r.code === `${m.home_team.code}-${m.away_team.code}`))
+  const openBolaoMatches = matches.filter((m) => m.status !== "finished")
+  const closedBolaoMatches = matches.filter((m) => m.status === "finished")
 
   return (
     <div className="flex flex-col gap-6">
@@ -196,127 +287,147 @@ export function AdminOfficialResults() {
       )}
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-card-foreground">Registrar Resultados Oficiais ({pendingMatches.length} pendentes)</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Ao salvar: grava a tabela de grupos (resultados oficiais), <strong className="font-medium text-foreground">encerra a partida no bolao</strong>{" "}
-            (placar na partida) e calcula pontos das apostas. Isto é o unico sitio para fechar jogos para o ranking.
-          </p>
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle className="text-card-foreground">Resultados e encerramento no bolão</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              <strong className="font-medium text-foreground">Salvar resultado</strong> grava só a tabela de grupos (resultados oficiais); o bolão continua
+              aberto para apostas até você clicar em <strong className="font-medium text-foreground">Encerrar partida no bolão</strong>, que aplica
+              placar, pontos e ranking.
+            </p>
+          </div>
+          <Button type="button" variant="outline" size="sm" disabled={isSubmitting} onClick={() => void handleReopenAll()} className="shrink-0 gap-1.5">
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+            Reabrir tudo
+          </Button>
         </CardHeader>
         <CardContent>
-          {pendingMatches.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">Todos os resultados foram registrados</p>
+          {openBolaoMatches.length === 0 ? (
+            <p className="py-8 text-center text-muted-foreground">Nenhuma partida aberta no bolão (todas encerradas ou sem partidas).</p>
           ) : (
             <div className="flex flex-col gap-4">
-              {pendingMatches.map((match) => (
-                <div
-                  key={match.id}
-                  className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="flex flex-1 flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {format(new Date(match.match_date), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                      </span>
-                      {match.group_name && (
-                        <Badge variant="outline" className="text-xs">
-                          Grupo {match.group_name}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="flex items-center gap-1">
-                        <span className="text-lg">{getCountryFlag(match.home_team.name)}</span>
-                        <span className="font-semibold">{match.home_team.name}</span>
+              {openBolaoMatches.map((match) => {
+                const s = getScores(match)
+                const hasOfficial = !!savedByCode(resultCode(match))
+                return (
+                  <div
+                    key={match.id}
+                    className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 p-4 lg:flex-row lg:items-center lg:justify-between"
+                  >
+                    <div className="flex flex-1 flex-col gap-2 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {format(new Date(match.match_date), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        </span>
+                        {match.group_name && (
+                          <Badge variant="outline" className="text-xs">
+                            Grupo {match.group_name}
+                          </Badge>
+                        )}
+                        {hasOfficial ? (
+                          <Badge className="text-xs bg-sky-500/15 text-sky-900 dark:text-sky-100">Resultado oficial guardado</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            Bolão aberto
+                          </Badge>
+                        )}
                       </div>
-                      <span className="text-muted-foreground">vs</span>
+                      <div className="flex items-center gap-2 text-sm flex-wrap">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="text-lg shrink-0">{getCountryFlag(match.home_team.name)}</span>
+                          <span className="font-semibold truncate">{match.home_team.name}</span>
+                        </div>
+                        <span className="text-muted-foreground">vs</span>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="text-lg shrink-0">{getCountryFlag(match.away_team.name)}</span>
+                          <span className="font-semibold truncate">{match.away_team.name}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                       <div className="flex items-center gap-1">
-                        <span className="text-lg">{getCountryFlag(match.away_team.name)}</span>
-                        <span className="font-semibold">{match.away_team.name}</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={s.home_goals}
+                          onChange={(e) => updateResult(match.id, "home_goals", parseInt(e.target.value, 10) || 0)}
+                          placeholder="0"
+                          className="h-10 w-16 text-center text-lg font-bold"
+                        />
+                        <span className="text-muted-foreground">x</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={s.away_goals}
+                          onChange={(e) => updateResult(match.id, "away_goals", parseInt(e.target.value, 10) || 0)}
+                          placeholder="0"
+                          className="h-10 w-16 text-center text-lg font-bold"
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="gap-2"
+                          disabled={isSubmitting}
+                          onClick={() => void handleSaveOfficialOnly(match)}
+                        >
+                          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                          Salvar resultado
+                        </Button>
+                        <Button type="button" size="sm" className="gap-2" disabled={isSubmitting} onClick={() => void handleCloseBolao(match)}>
+                          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                          Encerrar partida no bolão
+                        </Button>
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={results[match.id]?.home_goals ?? ""}
-                        onChange={(e) => updateResult(match.id, "home_goals", parseInt(e.target.value, 10) || 0)}
-                        placeholder="0"
-                        className="h-10 w-16 text-center text-lg font-bold"
-                      />
-                      <span className="text-muted-foreground">x</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={results[match.id]?.away_goals ?? ""}
-                        onChange={(e) => updateResult(match.id, "away_goals", parseInt(e.target.value, 10) || 0)}
-                        placeholder="0"
-                        className="h-10 w-16 text-center text-lg font-bold"
-                      />
-                    </div>
-
-                    <Button onClick={() => handleSaveResult(match)} disabled={isSubmitting} size="sm" className="gap-2">
-                      {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                      Salvar e encerrar
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {savedResults.length > 0 && (
+      {closedBolaoMatches.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-card-foreground">Resultados Registrados ({savedResults.length})</CardTitle>
-            <p className="text-sm text-muted-foreground">Apagar devolve a partida ao estado agendado no bolao e remove da tabela de grupos.</p>
+            <CardTitle className="text-card-foreground">Encerradas no bolão ({closedBolaoMatches.length})</CardTitle>
+            <p className="text-sm text-muted-foreground">Estas partidas já contaram para pontos e ranking. Reabrir zera pontos do jogo e remove o resultado oficial.</p>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-2">
-              {savedResults.map((result) => {
-                const m = matches.find(
-                  (match) => `${match.home_team.code}-${match.away_team.code}` === result.code,
-                )
-                return (
-                  <div
-                    key={result.code}
-                    className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3"
-                  >
-                    <div className="flex flex-1 flex-col gap-2 text-sm">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-lg">{getCountryFlag(result.team_home)}</span>
-                        <span className="font-semibold">{result.team_home}</span>
-                        <span className="text-xl font-bold text-card-foreground">{result.goals_home}</span>
-                        <span className="text-muted-foreground">×</span>
-                        <span className="text-xl font-bold text-card-foreground">{result.goals_away}</span>
-                        <span className="text-lg">{getCountryFlag(result.team_away)}</span>
-                        <span className="font-semibold">{result.team_away}</span>
-                      </div>
-                      {m && (
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(m.match_date), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                        </span>
-                      )}
-                    </div>
-                    {m && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                        disabled={isSubmitting}
-                        onClick={() => handleDeleteResult(m)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+              {closedBolaoMatches.map((match) => (
+                <div
+                  key={match.id}
+                  className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex flex-1 flex-wrap items-center gap-2 text-sm">
+                    <span className="text-lg">{getCountryFlag(match.home_team.name)}</span>
+                    <span className="font-semibold">{match.home_team.name}</span>
+                    <span className="text-xl font-bold tabular-nums">{match.home_score ?? "—"}</span>
+                    <span className="text-muted-foreground">×</span>
+                    <span className="text-xl font-bold tabular-nums">{match.away_score ?? "—"}</span>
+                    <span className="text-lg">{getCountryFlag(match.away_team.name)}</span>
+                    <span className="font-semibold">{match.away_team.name}</span>
+                    <Badge className="text-xs bg-emerald-500/15 text-emerald-900 dark:text-emerald-100">Encerrada no bolão</Badge>
                   </div>
-                )
-              })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isSubmitting}
+                    className="gap-2 shrink-0"
+                    onClick={() => void handleReopenBolao(match)}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Reabrir bolão
+                  </Button>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

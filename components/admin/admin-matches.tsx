@@ -56,14 +56,17 @@ function matchOfficialCode(m: Match) {
 function RegisteredMatchRow({
   match,
   hasOfficialResult,
+  bolaoEncerrado,
   stageLabelFn,
   disabled,
   onSaveDate,
   onDelete,
 }: {
   match: Match
-  /** Encerrada na UI só quando existe registo na aba Resultados Oficiais (teams_results). */
+  /** Linha em teams_results (resultado oficial para tabela de grupos). */
   hasOfficialResult: boolean
+  /** Partida fechada no bolão (pontos/ranking); só após "Encerrar partida" em Resultados Oficiais. */
+  bolaoEncerrado: boolean
   stageLabelFn: (s: string) => string
   disabled: boolean
   onSaveDate: (matchId: string, datetimeLocal: string) => void | Promise<void>
@@ -75,9 +78,9 @@ function RegisteredMatchRow({
     setDateValue(toDatetimeLocalValue(match.match_date))
   }, [match.id, match.match_date])
 
-  const encerrada = hasOfficialResult
   const bolaoFechadoSemOficial =
-    !hasOfficialResult && match.status === "finished" && match.home_score !== null && match.away_score !== null
+    bolaoEncerrado && !hasOfficialResult && match.home_score !== null && match.away_score !== null
+  const resultadoOficialBolaoAberto = hasOfficialResult && !bolaoEncerrado
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 p-4 sm:flex-row sm:items-end sm:justify-between">
@@ -93,24 +96,28 @@ function RegisteredMatchRow({
           <Badge
             variant="secondary"
             className={
-              encerrada
+              bolaoEncerrado
                 ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 text-xs"
-                : bolaoFechadoSemOficial
-                  ? "bg-amber-500/15 text-amber-900 dark:text-amber-100 text-xs"
-                  : match.status === "live"
-                    ? "bg-destructive/10 text-destructive text-xs"
-                    : "text-xs"
+                : resultadoOficialBolaoAberto
+                  ? "bg-sky-500/15 text-sky-900 dark:text-sky-100 text-xs"
+                  : bolaoFechadoSemOficial
+                    ? "bg-amber-500/15 text-amber-900 dark:text-amber-100 text-xs"
+                    : match.status === "live"
+                      ? "bg-destructive/10 text-destructive text-xs"
+                      : "text-xs"
             }
           >
-            {encerrada
-              ? "Encerrada (Resultados Oficiais)"
-              : bolaoFechadoSemOficial
-                ? "Placar no bolão — registe em Oficiais"
-                : match.status === "scheduled"
-                  ? "Agendada"
-                  : match.status === "live"
-                    ? "Ao Vivo"
-                    : "Em aberto"}
+            {bolaoEncerrado
+              ? "Encerrada no bolão"
+              : resultadoOficialBolaoAberto
+                ? "Resultado oficial (bolão aberto)"
+                : bolaoFechadoSemOficial
+                  ? "Bolão fechado — sem resultado oficial"
+                  : match.status === "scheduled"
+                    ? "Agendada"
+                    : match.status === "live"
+                      ? "Ao Vivo"
+                      : "Em aberto"}
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -369,8 +376,10 @@ export function AdminMatches() {
         <CardHeader>
           <CardTitle className="text-card-foreground">Partidas Cadastradas ({matches.length})</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Aqui apenas <strong className="font-medium text-foreground">crias e geres datas</strong>. O placar oficial, o encerramento da partida no
-            bolao e o ranking vêm da aba <strong className="font-medium text-foreground">Resultados Oficiais</strong>.
+            Aqui apenas <strong className="font-medium text-foreground">crias e geres datas</strong>. Na aba{" "}
+            <strong className="font-medium text-foreground">Resultados Oficiais</strong> podes <strong className="font-medium text-foreground">salvar o
+            resultado</strong> (tabela de grupos) e, quando quiseres, <strong className="font-medium text-foreground">encerrar a partida no bolão</strong>{" "}
+            para contar pontos e ranking.
           </p>
         </CardHeader>
         <CardContent>
@@ -405,6 +414,7 @@ export function AdminMatches() {
                                 key={match.id}
                                 match={match}
                                 hasOfficialResult={officialMatchCodes.has(matchOfficialCode(match))}
+                                bolaoEncerrado={match.status === "finished"}
                                 stageLabelFn={stageLabel}
                                 disabled={isSubmitting}
                                 onSaveDate={handleUpdateMatchDate}
@@ -425,6 +435,7 @@ export function AdminMatches() {
                         key={match.id}
                         match={match}
                         hasOfficialResult={officialMatchCodes.has(matchOfficialCode(match))}
+                        bolaoEncerrado={match.status === "finished"}
                         stageLabelFn={stageLabel}
                         disabled={isSubmitting}
                         onSaveDate={handleUpdateMatchDate}

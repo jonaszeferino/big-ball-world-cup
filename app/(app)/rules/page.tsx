@@ -12,6 +12,11 @@ export default function RulesPage() {
         <div className="rounded-lg border border-border bg-card p-5">
           <h2 className="text-lg font-semibold text-foreground">Placar exato (tempo regular)</h2>
           <p className="mt-2 text-sm text-muted-foreground">
+            Na <strong className="font-medium text-foreground">fase de grupos</strong> a pontuação é só isto e o resultado
+            abaixo (sem penáltis nem quem passa). A partir dos <strong className="font-medium text-foreground">16-avos</strong>{" "}
+            aplicam-se as regras extra de empate no mata-mata.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
             Acertou os golos da casa e do visitante tal como no resultado oficial do tempo regular.
           </p>
           <div className="mt-3 rounded-md bg-primary/10 px-3 py-2 text-primary">

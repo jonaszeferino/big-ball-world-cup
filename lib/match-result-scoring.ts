@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { isKnockoutEliminationStage, requiresPenaltyScores, validatePenaltyPair } from "@/lib/match-stage"
+import {
+  isGroupStage,
+  isKnockoutEliminationStage,
+  requiresPenaltyScores,
+  validatePenaltyPair,
+} from "@/lib/match-stage"
 
 export type BetPointsContext = {
   stage: string
@@ -29,9 +34,28 @@ export function resolveAdvancingTeamId(
   return null
 }
 
+/** Bolão na fase de grupos: só placar exato (3) ou vencedor/empate (1); ignora penáltis e “quem passa”. */
+function calculateBetPointsGroupStage(
+  actualHome: number,
+  actualAway: number,
+  predictedHome: number,
+  predictedAway: number,
+): number {
+  if (actualHome === predictedHome && actualAway === predictedAway) return 3
+
+  const actualResult =
+    actualHome > actualAway ? "home" : actualHome < actualAway ? "away" : "draw"
+  const predictedResult =
+    predictedHome > predictedAway ? "home" : predictedHome < predictedAway ? "away" : "draw"
+
+  if (actualResult === predictedResult) return 1
+  return 0
+}
+
 /**
  * 3 pts placar exato (tempo regular); 1 pt quem passa (mata-mata) ou 1 pt resultado (H/E/A) como antes.
- * No mata-mata, empate no palpite exige equipa que passa; sem isso, 0 pontos.
+ * No mata-mata (16-avos em diante), empate no palpite exige equipa que passa; sem isso, 0 pontos.
+ * Fase de grupos: usa apenas calculateBetPointsGroupStage (placar 3 / resultado 1).
  */
 export function calculateBetPoints(
   actualHome: number,
@@ -40,6 +64,10 @@ export function calculateBetPoints(
   predictedAway: number,
   ctx: BetPointsContext,
 ): number {
+  if (isGroupStage(ctx.stage)) {
+    return calculateBetPointsGroupStage(actualHome, actualAway, predictedHome, predictedAway)
+  }
+
   const knockout = isKnockoutEliminationStage(ctx.stage)
   const predDraw = predictedHome === predictedAway
   const actDraw = actualHome === actualAway

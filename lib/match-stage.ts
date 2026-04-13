@@ -1,4 +1,7 @@
-/** Fases eliminatórias (16-avos em diante): pode haver desempate por penáltis após empate no tempo regular. */
+/** Fase de grupos: regras clássicas do bolão (placar 3 pts / resultado 1 pt). Nada de penáltis nem “quem passa”. */
+export const GROUP_STAGE = "group" as const
+
+/** Fases eliminatórias (16-avos em diante): penáltis após empate; aposta de empate exige “quem passa”. */
 export const KNOCKOUT_ELIMINATION_STAGES = [
   "round_of_32",
   "round_of_16",
@@ -9,6 +12,10 @@ export const KNOCKOUT_ELIMINATION_STAGES = [
 ] as const
 
 export type KnockoutEliminationStage = (typeof KNOCKOUT_ELIMINATION_STAGES)[number]
+
+export function isGroupStage(stage: string): boolean {
+  return stage === GROUP_STAGE
+}
 
 export function isKnockoutEliminationStage(stage: string): boolean {
   return (KNOCKOUT_ELIMINATION_STAGES as readonly string[]).includes(stage)

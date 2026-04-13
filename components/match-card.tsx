@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { getCountryFlag } from "@/lib/country-flags"
-import { isKnockoutEliminationStage } from "@/lib/match-stage"
+import { isGroupStage, isKnockoutEliminationStage } from "@/lib/match-stage"
 
 interface Match {
   id: string
@@ -50,17 +50,16 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const advancesRequired = isKnockoutEliminationStage(match.stage) && homeScore === awayScore
+  /** Só a partir do mata-mata (16-avos…); fase de grupos não pede “quem passa”. */
+  const advancesRequired = !isGroupStage(match.stage) && isKnockoutEliminationStage(match.stage) && homeScore === awayScore
 
   useEffect(() => {
     setAdvancesTeamId(bet?.predicted_advances_team_id ?? null)
   }, [bet?.id, bet?.predicted_advances_team_id])
 
   useEffect(() => {
-    if (!isKnockoutEliminationStage(match.stage) || homeScore !== awayScore) {
-      setAdvancesTeamId(null)
-    }
-  }, [match.stage, homeScore, awayScore])
+    if (!advancesRequired) setAdvancesTeamId(null)
+  }, [advancesRequired])
 
   const isFinished = match.status === "finished"
   const isLocked = match.status !== "scheduled"
@@ -103,7 +102,9 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
     const supabase = createClient()
 
     const advancesPayload =
-      isKnockoutEliminationStage(match.stage) && homeScore === awayScore ? advancesTeamId : null
+      !isGroupStage(match.stage) && isKnockoutEliminationStage(match.stage) && homeScore === awayScore
+        ? advancesTeamId
+        : null
 
     try {
       if (hasBet) {

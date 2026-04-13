@@ -100,12 +100,16 @@ export default function MatchesPage() {
 
     if (teamData) setTeams(teamData)
 
-    const { data: matchData } = await supabase
-      .from("matches")
-      .select(
-        "id, home_score, away_score, home_penalty_score, away_penalty_score, match_date, stage, group_name, status, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)",
-      )
-      .order("match_date", { ascending: true })
+    const matchSelectFull =
+      "id, home_score, away_score, home_penalty_score, away_penalty_score, match_date, stage, group_name, status, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)"
+    const matchSelectBase =
+      "id, home_score, away_score, match_date, stage, group_name, status, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)"
+
+    const matchRes = await supabase.from("matches").select(matchSelectFull).order("match_date", { ascending: true })
+    const matchData =
+      matchRes.error != null
+        ? (await supabase.from("matches").select(matchSelectBase).order("match_date", { ascending: true })).data
+        : matchRes.data
 
     if (matchData) {
       const mapped = matchData.map((m: Record<string, unknown>) => ({
@@ -124,10 +128,15 @@ export default function MatchesPage() {
       setMatches(mapped)
     }
 
-    const { data: betData } = await supabase
-      .from("bets")
-      .select("id, match_id, predicted_home_score, predicted_away_score, predicted_advances_team_id, points_earned")
-      .eq("user_id", user.id)
+    const betSelectFull =
+      "id, match_id, predicted_home_score, predicted_away_score, predicted_advances_team_id, points_earned"
+    const betSelectBase = "id, match_id, predicted_home_score, predicted_away_score, points_earned"
+
+    const betRes = await supabase.from("bets").select(betSelectFull).eq("user_id", user.id)
+    const betData =
+      betRes.error != null
+        ? (await supabase.from("bets").select(betSelectBase).eq("user_id", user.id)).data
+        : betRes.data
 
     if (betData) {
       setBets(

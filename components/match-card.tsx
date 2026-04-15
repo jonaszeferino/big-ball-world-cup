@@ -8,9 +8,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Check, Minus, Plus, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { ptBR } from "date-fns/locale"
 import { getCountryFlag } from "@/lib/country-flags"
+import { formatMatchDateTimeBrazil, isBeforeMatchKickoff } from "@/lib/match-datetime-brazil"
 import { isGroupStage, isKnockoutEliminationStage } from "@/lib/match-stage"
 
 interface Match {
@@ -65,12 +64,14 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
   const isLocked = match.status !== "scheduled"
   const hasBet = !!bet
 
-  // Verificar se a aposta pode ser feita (até 5 minutos antes)
-  const now = new Date()
-  const matchTime = new Date(match.match_date)
-  const timeDiffInMinutes = (matchTime.getTime() - now.getTime()) / (1000 * 60)
-  const canBet = timeDiffInMinutes > 5 && !isLocked && !isFinished
-  const betLocked = timeDiffInMinutes <= 5 && timeDiffInMinutes > 0 && match.status === "scheduled"
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 15_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const beforeKickoff = isBeforeMatchKickoff(match.match_date, nowMs)
+  const canBet = match.status === "scheduled" && beforeKickoff
 
   const stageLabels: Record<string, string> = {
     group: "Fase de Grupos",
@@ -86,9 +87,8 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
     setIsSubmitting(true)
     setError(null)
 
-    // Validar se ainda pode fazer aposta (5 minutos antes do jogo)
     if (!canBet) {
-      setError("Aposta bloqueada. A aposta só pode ser feita até 5 minutos antes da partida.")
+      setError("Apostas encerradas após o início da partida (mesmo instante da base de dados).")
       setIsSubmitting(false)
       return
     }
@@ -160,8 +160,11 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
               <Lock className="h-3 w-3 text-muted-foreground" />
             )}
           </div>
-          <span className="text-xs text-muted-foreground">
-            {format(new Date(match.match_date), "dd/MM HH:mm", { locale: ptBR })}
+          <span
+            className="text-xs text-muted-foreground"
+            title="Data e hora no horário de Brasília"
+          >
+            {formatMatchDateTimeBrazil(match.match_date)}
           </span>
         </div>
 
@@ -202,7 +205,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
           </div>
         </div>
 
-        {!isLocked && !betLocked && (
+        {!isLocked && (
           <div className="mt-4 flex flex-col gap-3">
             <div className="flex items-center justify-center gap-3">
               <div className="flex items-center gap-1">
@@ -300,24 +303,22 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
               disabled={isSubmitting || !canBet || (advancesRequired && !advancesTeamId)}
               className={cn(
                 "w-full",
-                hasBet
-                  ? "bg-green-600 text-white hover:bg-green-700"
-                  : "bg-blue-600 text-white hover:bg-blue-700",
+                !canBet
+                  ? "bg-gray-500 text-gray-50 hover:bg-gray-500"
+                  : hasBet
+                    ? "bg-green-600 text-white hover:bg-green-700"
+                    : "bg-blue-600 text-white hover:bg-blue-700",
               )}
             >
               <Check className="mr-1 h-4 w-4" />
               {isSubmitting ? "Salvando..." : hasBet ? "Atualizar Aposta" : "Confirmar Aposta"}
             </Button>
             {error && <p className="text-xs text-destructive text-center">{error}</p>}
-          </div>
-        )}
-
-        {betLocked && (
-          <div className="mt-4 flex items-center justify-center rounded-md bg-destructive/10 px-3 py-2">
-            <Lock className="mr-2 h-4 w-4 text-destructive" />
-            <span className="text-xs text-destructive font-medium">
-              Aposta bloqueada há {Math.abs(Math.ceil(timeDiffInMinutes))} min
-            </span>
+            {match.status === "scheduled" && !beforeKickoff && (
+              <p className="text-xs text-center text-muted-foreground">
+                Apostas encerradas — o jogo já começou (data/hora da partida em horário de Brasília).
+              </p>
+            )}
           </div>
         )}
 

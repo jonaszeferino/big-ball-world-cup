@@ -18,8 +18,11 @@ export function PlayoffBrackets() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Os confrontos dos 16-avos são definidos pela classificação na fase de grupos. 
-            Os 3º colocados que avançam dependem dos resultados de todos os grupos.
+            Na Copa 2026, os 16 jogos desta fase (oficialmente jogos 73 a 88) misturam{" "}
+            <span className="font-medium text-foreground">2º contra 2º</span>,{" "}
+            <span className="font-medium text-foreground">1º contra 2º</span> e{" "}
+            <span className="font-medium text-foreground">1º contra um dos 8 melhores 3º</span> — não é só cruzamento
+            1º vs 2º. Os terceiros obedecem ao Anexo C do regulamento FIFA (495 combinações possíveis).
           </p>
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -41,12 +44,18 @@ export function PlayoffBrackets() {
                     </CardHeader>
                     <CardContent className="flex flex-col gap-2 text-sm">
                       <div className="rounded-md bg-muted/50 p-2">
+                        <p className="mb-1.5 text-[10px] font-medium uppercase text-muted-foreground">
+                          Jogo FIFA {bracket.fifaMatch1}
+                        </p>
                         <div className="font-medium text-foreground">{bracket.match1.team1}</div>
                         <div className="text-xs text-muted-foreground">vs</div>
                         <div className="font-medium text-foreground">{bracket.match1.team2}</div>
                       </div>
                       {bracket.match2 && (
                         <div className="rounded-md bg-muted/50 p-2">
+                          <p className="mb-1.5 text-[10px] font-medium uppercase text-muted-foreground">
+                            Jogo FIFA {bracket.fifaMatch2}
+                          </p>
                           <div className="font-medium text-foreground">{bracket.match2.team1}</div>
                           <div className="text-xs text-muted-foreground">vs</div>
                           <div className="font-medium text-foreground">{bracket.match2.team2}</div>
@@ -76,12 +85,18 @@ export function PlayoffBrackets() {
                     </CardHeader>
                     <CardContent className="flex flex-col gap-2 text-sm">
                       <div className="rounded-md bg-muted/50 p-2">
+                        <p className="mb-1.5 text-[10px] font-medium uppercase text-muted-foreground">
+                          Jogo FIFA {bracket.fifaMatch1}
+                        </p>
                         <div className="font-medium text-foreground">{bracket.match1.team1}</div>
                         <div className="text-xs text-muted-foreground">vs</div>
                         <div className="font-medium text-foreground">{bracket.match1.team2}</div>
                       </div>
                       {bracket.match2 && (
                         <div className="rounded-md bg-muted/50 p-2">
+                          <p className="mb-1.5 text-[10px] font-medium uppercase text-muted-foreground">
+                            Jogo FIFA {bracket.fifaMatch2}
+                          </p>
                           <div className="font-medium text-foreground">{bracket.match2.team1}</div>
                           <div className="text-xs text-muted-foreground">vs</div>
                           <div className="font-medium text-foreground">{bracket.match2.team2}</div>

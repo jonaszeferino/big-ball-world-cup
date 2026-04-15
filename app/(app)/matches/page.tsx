@@ -5,11 +5,19 @@ import { createClient } from "@/lib/supabase/client"
 import { MatchCard } from "@/components/match-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Trophy, Calendar } from "lucide-react"
+import { Loader2, Trophy, Calendar, Sparkles } from "lucide-react"
 import { getCountryFlag } from "@/lib/country-flags"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  computeSimulatedGroupStandings,
+  sortSimulatedStandings,
+  countGroupStageMatchesWithBet,
+  type SimulatedTeamStats,
+} from "@/lib/simulated-group-standings"
+import { resolveSimulatedRoundOf32 } from "@/lib/simulated-round-of-32"
+import { SimulatedRoundOf32 } from "@/components/simulated-round-of-32"
 
 interface Team {
   id: string
@@ -105,7 +113,7 @@ export default function MatchesPage() {
   const [officialResults, setOfficialResults] = useState<OfficialResult[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [mainView, setMainView] = useState<"partidas" | "classificacao">("partidas")
+  const [mainView, setMainView] = useState<"partidas" | "classificacao" | "simulacao">("partidas")
   const [activeTab, setActiveTab] = useState("group")
   /** Fase de grupos: lista por letra de grupo ou lista única por data. */
   const [groupLayout, setGroupLayout] = useState<"group" | "date">("date")
@@ -197,6 +205,49 @@ export default function MatchesPage() {
         return acc
       }, {}),
     [teams],
+  )
+
+  const simulatedStandingsByGroup = useMemo(() => {
+    const standingsMap = computeSimulatedGroupStandings(teams, matches, bets)
+    const out: Record<
+      string,
+      { team: Team; stats: SimulatedTeamStats }[]
+    > = {}
+    for (const letter of GROUPS) {
+      const groupTeams = teamsByGroup[letter]
+      if (!groupTeams?.length) continue
+      const statsForGroup = standingsMap.get(letter)
+      if (!statsForGroup) continue
+      const rows = groupTeams.map((team) => ({
+        team,
+        stats: statsForGroup.get(team.id) ?? {
+          played: 0,
+          won: 0,
+          draw: 0,
+          lost: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          goalDiff: 0,
+          points: 0,
+        },
+      }))
+      out[letter] = sortSimulatedStandings(rows)
+    }
+    return out
+  }, [teams, matches, bets, teamsByGroup])
+
+  const groupStageBetCounts = useMemo(
+    () =>
+      countGroupStageMatchesWithBet(
+        matches.filter((m) => m.stage === "group"),
+        bets,
+      ),
+    [matches, bets],
+  )
+
+  const simulatedRoundOf32 = useMemo(
+    () => resolveSimulatedRoundOf32(simulatedStandingsByGroup),
+    [simulatedStandingsByGroup],
   )
 
   const calculateTeamStats = useCallback(
@@ -404,6 +455,133 @@ export default function MatchesPage() {
       </div>
     )
 
+  const simulationSection =
+    Object.keys(simulatedStandingsByGroup).length > 0 ? (
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Simulacao dos grupos (os seus palpites)</h2>
+          <p className="text-sm text-muted-foreground">
+            Classificacao calculada só com os jogos da fase de grupos em que já tem placar apostado. Jogos sem palpite não
+            entram na tabela ({groupStageBetCounts.withBet} de {groupStageBetCounts.total} jogos com aposta).
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {GROUPS.map((groupLetter) => {
+            const rows = simulatedStandingsByGroup[groupLetter]
+            if (!rows?.length) return null
+
+            return (
+              <Card key={`sim-${groupLetter}`} className="overflow-hidden rounded-2xl border-border/80 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Grupo {groupLetter}</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="-mx-1 overflow-x-auto rounded-xl border border-border sm:mx-0">
+                    <table className="w-full min-w-[32rem] border-collapse text-[11px] sm:min-w-0 sm:text-xs md:text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="w-8 whitespace-nowrap px-1.5 py-2 text-center font-medium text-muted-foreground sm:px-2 sm:py-2.5">
+                            #
+                          </th>
+                          <th className="min-w-[6.5rem] whitespace-nowrap px-1.5 py-2 text-left font-medium text-muted-foreground sm:min-w-[7.5rem] sm:px-2">
+                            Time
+                          </th>
+                          <th className="w-8 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-9 sm:px-1.5">
+                            PG
+                          </th>
+                          <th className="w-7 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-8">
+                            V
+                          </th>
+                          <th className="w-7 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-8">
+                            E
+                          </th>
+                          <th className="w-7 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-8">
+                            D
+                          </th>
+                          <th className="w-8 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-9">
+                            GP
+                          </th>
+                          <th className="w-8 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-9">
+                            GC
+                          </th>
+                          <th className="w-9 whitespace-nowrap px-1 py-2 text-center font-medium text-muted-foreground sm:w-10">
+                            SG
+                          </th>
+                          <th className="w-10 whitespace-nowrap px-1.5 py-2 text-center font-medium text-muted-foreground sm:w-11 sm:px-2">
+                            Pts
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {rows.map(({ team, stats }, index) => (
+                          <tr key={team.id} className="hover:bg-muted/30">
+                            <td className="whitespace-nowrap px-1.5 py-2 text-center font-medium text-muted-foreground sm:px-2 sm:py-2.5">
+                              {index + 1}
+                            </td>
+                            <td className="min-w-[6.5rem] px-1.5 py-1.5 sm:min-w-[7.5rem] sm:px-2 sm:py-2">
+                              <div className="flex items-center gap-1.5 sm:gap-2">
+                                <span
+                                  className="shrink-0 text-lg leading-none sm:text-xl md:text-2xl"
+                                  title={team.name}
+                                >
+                                  {getCountryFlag(team.name)}
+                                </span>
+                                <span className="whitespace-nowrap font-semibold text-foreground">{team.code}</span>
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:px-1.5 sm:py-2.5">
+                              {stats.played}
+                            </td>
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
+                              {stats.won}
+                            </td>
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
+                              {stats.draw}
+                            </td>
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
+                              {stats.lost}
+                            </td>
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
+                              {stats.goalsFor}
+                            </td>
+                            <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
+                              {stats.goalsAgainst}
+                            </td>
+                            <td
+                              className={`whitespace-nowrap px-1.5 py-2.5 text-center font-medium ${
+                                stats.goalDiff > 0
+                                  ? "text-green-600"
+                                  : stats.goalDiff < 0
+                                    ? "text-red-600"
+                                    : "text-muted-foreground"
+                              }`}
+                            >
+                              {stats.goalDiff > 0 ? "+" : ""}
+                              {stats.goalDiff}
+                            </td>
+                            <td className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-foreground">
+                              {stats.points}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+
+        <SimulatedRoundOf32 brackets={simulatedRoundOf32} />
+      </div>
+    ) : (
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/50 py-16">
+        <Sparkles className="mb-3 h-10 w-10 text-muted-foreground" />
+        <p className="text-muted-foreground">Nenhum time em grupo cadastrado ainda</p>
+      </div>
+    )
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -414,20 +592,28 @@ export default function MatchesPage() {
         </p>
       </div>
 
-      <Tabs value={mainView} onValueChange={(v) => setMainView(v as "partidas" | "classificacao")}>
-        <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl p-1 sm:max-w-md">
-          <TabsTrigger value="partidas" className="gap-2 rounded-lg py-2.5">
-            <Calendar className="h-4 w-4" />
+      <Tabs value={mainView} onValueChange={(v) => setMainView(v as "partidas" | "classificacao" | "simulacao")}>
+        <TabsList className="grid h-auto w-full grid-cols-3 rounded-xl p-1 sm:max-w-2xl">
+          <TabsTrigger value="partidas" className="gap-1.5 rounded-lg py-2.5 text-xs sm:text-sm">
+            <Calendar className="h-4 w-4 shrink-0" />
             Partidas
           </TabsTrigger>
-          <TabsTrigger value="classificacao" className="gap-2 rounded-lg py-2.5">
-            <Trophy className="h-4 w-4" />
+          <TabsTrigger value="classificacao" className="gap-1.5 rounded-lg py-2.5 text-xs sm:text-sm">
+            <Trophy className="h-4 w-4 shrink-0" />
             Grupos
+          </TabsTrigger>
+          <TabsTrigger value="simulacao" className="gap-1.5 rounded-lg py-2.5 text-xs sm:text-sm">
+            <Sparkles className="h-4 w-4 shrink-0" />
+            Simulacao
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="classificacao" className="mt-6">
           {standingsSection}
+        </TabsContent>
+
+        <TabsContent value="simulacao" className="mt-6">
+          {simulationSection}
         </TabsContent>
 
         <TabsContent value="partidas" className="mt-6">

@@ -298,7 +298,12 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
               size="sm"
               onClick={handleSubmit}
               disabled={isSubmitting || !canBet || (advancesRequired && !advancesTeamId)}
-              className="w-full"
+              className={cn(
+                "w-full",
+                hasBet
+                  ? "bg-green-600 text-white hover:bg-green-700"
+                  : "bg-blue-600 text-white hover:bg-blue-700",
+              )}
             >
               <Check className="mr-1 h-4 w-4" />
               {isSubmitting ? "Salvando..." : hasBet ? "Atualizar Aposta" : "Confirmar Aposta"}

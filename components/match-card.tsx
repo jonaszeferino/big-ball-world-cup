@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import { getCountryFlag } from "@/lib/country-flags"
 import { formatMatchDateTimeBrazil, isBeforeMatchKickoff } from "@/lib/match-datetime-brazil"
 import { isGroupStage, isKnockoutEliminationStage } from "@/lib/match-stage"
+import { POINTS_ADVANCE_KNOCKOUT, POINTS_EXACT, POINTS_RESULT } from "@/lib/match-result-scoring"
 
 interface Match {
   id: string
@@ -138,8 +139,10 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
   const getPointsBadge = () => {
     if (!isFinished || !bet) return null
     const points = bet.points_earned
-    if (points === 3) return <Badge className="bg-primary text-primary-foreground">+3 Exato!</Badge>
-    if (points === 1) return <Badge className="bg-accent text-accent-foreground">+1 Acertou</Badge>
+    if (points === POINTS_EXACT) return <Badge className="bg-primary text-primary-foreground">+{POINTS_EXACT} Exato!</Badge>
+    if (points === POINTS_RESULT) return <Badge className="bg-accent text-accent-foreground">+{POINTS_RESULT} Resultado</Badge>
+    if (points === POINTS_ADVANCE_KNOCKOUT)
+      return <Badge className="bg-secondary text-secondary-foreground">+{POINTS_ADVANCE_KNOCKOUT} Quem passa</Badge>
     return <Badge variant="secondary" className="text-muted-foreground">0 pts</Badge>
   }
 

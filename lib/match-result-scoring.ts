@@ -15,6 +15,13 @@ export type BetPointsContext = {
   predictedAdvancesTeamId: string | null
 }
 
+/** Placar exato (tempo regular). */
+export const POINTS_EXACT = 10
+/** Vencedor ou empate no tempo regular, sem placar exato. */
+export const POINTS_RESULT = 7
+/** Mata-mata: acertou quem passa quando o placar/resultado no 90' não valeria 7 ou 10. */
+export const POINTS_ADVANCE_KNOCKOUT = 5
+
 /** Equipa que passa no mata-mata (tempo regular ou penáltis). */
 export function resolveAdvancingTeamId(
   actualHome: number,
@@ -34,28 +41,31 @@ export function resolveAdvancingTeamId(
   return null
 }
 
-/** Bolão na fase de grupos: só placar exato (3) ou vencedor/empate (1); ignora penáltis e “quem passa”. */
+/** Fase de grupos: só placar exato ou vencedor/empate (sem penáltis nem “quem passa”). */
 function calculateBetPointsGroupStage(
   actualHome: number,
   actualAway: number,
   predictedHome: number,
   predictedAway: number,
 ): number {
-  if (actualHome === predictedHome && actualAway === predictedAway) return 3
+  if (actualHome === predictedHome && actualAway === predictedAway) return POINTS_EXACT
 
   const actualResult =
     actualHome > actualAway ? "home" : actualHome < actualAway ? "away" : "draw"
   const predictedResult =
     predictedHome > predictedAway ? "home" : predictedHome < predictedAway ? "away" : "draw"
 
-  if (actualResult === predictedResult) return 1
+  if (actualResult === predictedResult) return POINTS_RESULT
   return 0
 }
 
 /**
- * 3 pts placar exato (tempo regular); 1 pt quem passa (mata-mata) ou 1 pt resultado (H/E/A) como antes.
- * No mata-mata (16-avos em diante), empate no palpite exige equipa que passa; sem isso, 0 pontos.
- * Fase de grupos: usa apenas calculateBetPointsGroupStage (placar 3 / resultado 1).
+ * Mata-mata: uma única pontuação por jogo (a melhor que se aplicar, sem somar):
+ * - 10 placar exato no tempo regular (inclui empate). Não se soma “quem passa” — o exato já define o quadro.
+ * - 7 acertou vencedor ou empate no 90' sem placar exato.
+ * - 5 acertou só quem passa (ex.: palpite de empate no 90' errado no marcador, mas equipa certa após penáltis).
+ * - 0 nada disto.
+ * Empate no palpite sem indicar quem passa: 0 (regra de aposta inválida).
  */
 export function calculateBetPoints(
   actualHome: number,
@@ -70,14 +80,22 @@ export function calculateBetPoints(
 
   const knockout = isKnockoutEliminationStage(ctx.stage)
   const predDraw = predictedHome === predictedAway
-  const actDraw = actualHome === actualAway
 
   if (knockout && predDraw && !ctx.predictedAdvancesTeamId) {
     return 0
   }
 
   if (predictedHome === actualHome && predictedAway === actualAway) {
-    return 3
+    return POINTS_EXACT
+  }
+
+  const actualResult =
+    actualHome > actualAway ? "home" : actualHome < actualAway ? "away" : "draw"
+  const predictedResult =
+    predictedHome > predictedAway ? "home" : predictedHome < predictedAway ? "away" : "draw"
+
+  if (actualResult === predictedResult) {
+    return POINTS_RESULT
   }
 
   const actualAdv = resolveAdvancingTeamId(
@@ -91,19 +109,9 @@ export function calculateBetPoints(
   )
 
   if (ctx.predictedAdvancesTeamId && actualAdv && ctx.predictedAdvancesTeamId === actualAdv) {
-    return 1
+    return POINTS_ADVANCE_KNOCKOUT
   }
 
-  const actualResult =
-    actualHome > actualAway ? "home" : actualHome < actualAway ? "away" : "draw"
-  const predictedResult =
-    predictedHome > predictedAway ? "home" : predictedHome < predictedAway ? "away" : "draw"
-
-  if (knockout && predDraw && actDraw) {
-    return 0
-  }
-
-  if (actualResult === predictedResult) return 1
   return 0
 }
 

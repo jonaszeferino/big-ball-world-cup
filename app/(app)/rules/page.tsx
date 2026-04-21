@@ -3,54 +3,59 @@ export default function RulesPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Regras do Bolão</h1>
-        <p className="text-sm text-muted-foreground">
-          Entenda como funciona a pontuação das apostas
-        </p>
+        <p className="text-sm text-muted-foreground">Pontuação por palpite em cada jogo (tempo regular, salvo nota abaixo)</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-semibold text-foreground">Placar exato (tempo regular)</h2>
+          <h2 className="text-lg font-semibold text-foreground">Placar exato</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Na <strong className="font-medium text-foreground">fase de grupos</strong> a pontuação é só isto e o resultado
-            abaixo (sem penáltis nem quem passa). A partir dos <strong className="font-medium text-foreground">16-avos</strong>{" "}
-            aplicam-se as regras extra de empate no mata-mata.
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Acertou os golos da casa e do visitante tal como no resultado oficial do tempo regular.
+            Acertou os golos da casa e do visitante tal como no resultado oficial do tempo regular (90 minutos).
           </p>
           <div className="mt-3 rounded-md bg-primary/10 px-3 py-2 text-primary">
-            <span className="text-xl font-bold">+3 pontos</span>
+            <span className="text-xl font-bold">+10 pontos</span>
           </div>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-semibold text-foreground">Quem passa (mata-mata)</h2>
+          <h2 className="text-lg font-semibold text-foreground">Vencedor ou empate (sem placar exato)</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Se o palpite for empate nas fases eliminatórias (16-avos em diante), indica qual equipa passa. Acertar quem
-            avança (vencedor no tempo ou após penáltis) vale 1 ponto quando o placar exato não acerta.
+            Acertou se ganha a casa, o visitante ou empate, mas não o marcador certo. Vale na fase de grupos e no
+            mata-mata.
           </p>
           <div className="mt-3 rounded-md bg-accent/15 px-3 py-2 text-accent-foreground">
-            <span className="text-xl font-bold">+1 ponto</span>
+            <span className="text-xl font-bold">+7 pontos</span>
           </div>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-semibold text-foreground">Resultado (vencedor ou empate)</h2>
+          <h2 className="text-lg font-semibold text-foreground">Quem passa (só mata-mata)</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Acertou o vencedor ou o empate no tempo regular, sem acertar o placar exato (e sem contar o caso de empate
-            no mata-mata em que só o &quot;quem passa&quot; conta).
+            Nos jogos eliminatórios, se o palpite for empate no 90&apos;, tens de dizer qual equipe passa (tempo extra ou
+            penáltis). Se não acertaste o resultado nem o empate no 90&apos;, mas acertaste a equipe que avança, contas
+            estes pontos — <strong className="font-medium text-foreground">não se somam</strong> com o exato nem com o +7:
+            conta só a melhor regra que se aplicar ao teu palpite.
           </p>
-          <div className="mt-3 rounded-md bg-accent/15 px-3 py-2 text-accent-foreground">
-            <span className="text-xl font-bold">+1 ponto</span>
+          <div className="mt-3 rounded-md bg-secondary/80 px-3 py-2 text-secondary-foreground">
+            <span className="text-xl font-bold">+5 pontos</span>
           </div>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-5">
+          <h2 className="text-lg font-semibold text-foreground">Empate no mata-mata: exato vs quem passa</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Se acertares o placar exato do 90&apos; (incluindo empate), recebes <strong className="font-medium text-foreground">+10</strong>{" "}
+            e não recebes mais +5 pela escolha &quot;quem passa&quot; — o exato já cobre o teu palpite. Só quando{" "}
+            <strong className="font-medium text-foreground">não</strong> há +10 nem +7 é que o +5 por acertar quem
+            passa pode contar.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-border bg-card p-5 md:col-span-2">
           <h2 className="text-lg font-semibold text-foreground">Sem pontos</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Não acertou o placar nem o resultado útil acima. No mata-mata, empate no palpite sem escolher quem passa não
-            pontua.
+            Não acertaste placar, nem resultado (7), nem quem passa (5). No mata-mata, empate no palpite sem escolher quem
+            passa não pontua.
           </p>
           <div className="mt-3 rounded-md bg-muted/50 px-3 py-2 text-muted-foreground">
             <span className="text-xl font-bold">0 pontos</span>

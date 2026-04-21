@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Check, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { calculateBetPoints } from "@/lib/match-result-scoring"
 
 interface Team {
   id: string
@@ -69,26 +70,12 @@ export function AdminResults() {
 
   useEffect(() => { loadMatches() }, [loadMatches])
 
-  const calculatePoints = (
-    actualHome: number,
-    actualAway: number,
-    predictedHome: number,
-    predictedAway: number
-  ) => {
-    if (actualHome === predictedHome && actualAway === predictedAway) return 3
-
-    const actualResult = actualHome > actualAway ? "home" : actualHome < actualAway ? "away" : "draw"
-    const predictedResult = predictedHome > predictedAway ? "home" : predictedHome < predictedAway ? "away" : "draw"
-
-    if (actualResult === predictedResult) return 1
-    return 0
-  }
-
   const handleSetResult = async (matchId: string) => {
     setSubmittingId(matchId)
     const supabase = createClient()
     const matchScores = scores[matchId]
-    if (!matchScores) return
+    const matchRow = matches.find((m) => m.id === matchId)
+    if (!matchScores || !matchRow) return
 
     const { error: matchErr } = await supabase
       .from("matches")
@@ -106,30 +93,46 @@ export function AdminResults() {
 
     const { data: bets } = await supabase
       .from("bets")
-      .select("id, user_id, predicted_home_score, predicted_away_score")
+      .select("id, user_id, predicted_home_score, predicted_away_score, predicted_advances_team_id, points_earned")
       .eq("match_id", matchId)
 
     if (bets && bets.length > 0) {
-      const pointsMap: Record<string, number> = {}
+      const deltaByUser: Record<string, number> = {}
 
       for (const bet of bets) {
-        const points = calculatePoints(
+        const b = bet as {
+          id: string
+          user_id: string
+          predicted_home_score: number
+          predicted_away_score: number
+          predicted_advances_team_id: string | null
+          points_earned: number | null
+        }
+        const newPoints = calculateBetPoints(
           matchScores.home,
           matchScores.away,
-          bet.predicted_home_score,
-          bet.predicted_away_score
+          b.predicted_home_score,
+          b.predicted_away_score,
+          {
+            stage: matchRow.stage,
+            homeTeamId: matchRow.home_team.id,
+            awayTeamId: matchRow.away_team.id,
+            homePenalty: null,
+            awayPenalty: null,
+            predictedAdvancesTeamId: b.predicted_advances_team_id ?? null,
+          },
         )
 
-        await supabase
-          .from("bets")
-          .update({ points_earned: points })
-          .eq("id", bet.id)
+        await supabase.from("bets").update({ points_earned: newPoints }).eq("id", b.id)
 
-        if (!pointsMap[bet.user_id]) pointsMap[bet.user_id] = 0
-        pointsMap[bet.user_id] += points
+        const delta = newPoints - (b.points_earned ?? 0)
+        if (delta !== 0) {
+          deltaByUser[b.user_id] = (deltaByUser[b.user_id] ?? 0) + delta
+        }
       }
 
-      for (const [userId, points] of Object.entries(pointsMap)) {
+      for (const [userId, delta] of Object.entries(deltaByUser)) {
+        if (delta === 0) continue
         const { data: profile } = await supabase
           .from("profiles")
           .select("total_points")
@@ -139,7 +142,7 @@ export function AdminResults() {
         if (profile) {
           await supabase
             .from("profiles")
-            .update({ total_points: profile.total_points + points })
+            .update({ total_points: profile.total_points + delta })
             .eq("id", userId)
         }
       }

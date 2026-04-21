@@ -46,7 +46,8 @@ export default function HomePage() {
               <h3 className="font-semibold text-card-foreground">Placar exato</h3>
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Acerte o placar exato e ganhe 3 pontos por partida.
+              Acerte o placar exato do tempo regular (90 minutos) e ganhe <strong className="font-semibold text-foreground">10 pontos</strong> por
+              partida.
             </p>
           </div>
           <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-5 text-left shadow-sm">
@@ -54,10 +55,15 @@ export default function HomePage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                 <BarChart3 className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="font-semibold text-card-foreground">Resultado certo</h3>
+              <h3 className="font-semibold text-card-foreground">Vencedor ou empate</h3>
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Acerte vencedor ou empate e ganhe 1 ponto.
+              Sem placar exato: acerte quem vence ou o empate e ganhe <strong className="font-semibold text-foreground">7 pontos</strong>. No
+              mata-mata há regras extra —{" "}
+              <Link href="/rules" className="font-medium text-primary underline-offset-4 hover:underline">
+                vê as regras completas
+              </Link>
+              .
             </p>
           </div>
         </div>

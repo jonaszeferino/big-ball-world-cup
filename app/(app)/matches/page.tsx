@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { MatchCard } from "@/components/match-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Trophy, Calendar, Sparkles } from "lucide-react"
+import { Loader2, Trophy, Calendar, Sparkles, ArrowUp, RefreshCw } from "lucide-react"
 import { getCountryFlag } from "@/lib/country-flags"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
 import { Label } from "@/components/ui/label"
@@ -18,6 +18,7 @@ import {
 } from "@/lib/simulated-group-standings"
 import { resolveSimulatedRoundOf32 } from "@/lib/simulated-round-of-32"
 import { SimulatedRoundOf32 } from "@/components/simulated-round-of-32"
+import { Button } from "@/components/ui/button"
 
 interface Team {
   id: string
@@ -793,6 +794,33 @@ export default function MatchesPage() {
           </Tabs>
         </TabsContent>
       </Tabs>
+
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-end px-3 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] pt-2 md:bottom-0 md:pb-6 md:pt-0">
+        <div className="pointer-events-auto flex flex-col gap-2">
+          <Button
+            id="backToTheTop"
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="h-11 w-11 rounded-full border border-border bg-card shadow-md"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            aria-label="Voltar ao topo"
+          >
+            <ArrowUp className="h-5 w-5" />
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="h-11 w-11 rounded-full border border-border bg-card shadow-md"
+            onClick={() => void loadData()}
+            aria-label="Atualizar partidas e apostas"
+            title="Atualizar"
+          >
+            <RefreshCw className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

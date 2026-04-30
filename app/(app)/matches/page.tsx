@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { Suspense, useEffect, useState, useCallback, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { matchStageToMatchesTab } from "@/lib/next-match-bet-reminder"
@@ -109,7 +109,7 @@ function sortGroupKeys(keys: string[]): string[] {
   })
 }
 
-export default function MatchesPage() {
+function MatchesPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const apostaFocusId = searchParams.get("aposta")
@@ -848,5 +848,19 @@ export default function MatchesPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function MatchesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <MatchesPageContent />
+    </Suspense>
   )
 }

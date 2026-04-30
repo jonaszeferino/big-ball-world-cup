@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState, useCallback, useMemo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { matchStageToMatchesTab } from "@/lib/next-match-bet-reminder"
 import { MatchCard } from "@/components/match-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -108,6 +110,10 @@ function sortGroupKeys(keys: string[]): string[] {
 }
 
 export default function MatchesPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const apostaFocusId = searchParams.get("aposta")
+
   const [matches, setMatches] = useState<Match[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [bets, setBets] = useState<Bet[]>([])
@@ -195,6 +201,26 @@ export default function MatchesPage() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    if (loading || matches.length === 0 || !apostaFocusId) return
+
+    const match = matches.find((m) => m.id === apostaFocusId)
+    if (!match) {
+      router.replace("/matches", { scroll: false })
+      return
+    }
+
+    setMainView("partidas")
+    setActiveTab(matchStageToMatchesTab(match.stage))
+
+    const t = window.setTimeout(() => {
+      document.getElementById(`match-${apostaFocusId}`)?.scrollIntoView({ behavior: "smooth", block: "center" })
+      router.replace("/matches", { scroll: false })
+    }, 400)
+
+    return () => clearTimeout(t)
+  }, [loading, matches, apostaFocusId, router])
 
   const teamsByGroup = useMemo(
     () =>

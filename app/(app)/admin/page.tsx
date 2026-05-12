@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react"
 import { AdminTeams } from "@/components/admin/admin-teams"
 import { AdminMatches } from "@/components/admin/admin-matches"
 import { AdminOfficialResults } from "@/components/admin/admin-official-results"
+import { AdminBetGroups } from "@/components/admin/admin-bet-groups"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
 
 export default function AdminPage() {
@@ -44,7 +45,7 @@ export default function AdminPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Painel Admin</h1>
         <p className="text-sm text-muted-foreground">
-          Gerencie selecoes, partidas e resultados do bolao
+          Gerencie selecoes, partidas, grupos de apostas e resultados do bolao
         </p>
       </div>
 
@@ -52,6 +53,7 @@ export default function AdminPage() {
         <TabsList>
           <TabsTrigger value="teams">Selecoes</TabsTrigger>
           <TabsTrigger value="matches">Partidas</TabsTrigger>
+          <TabsTrigger value="bet-groups">Grupos</TabsTrigger>
           <TabsTrigger value="playoffs">Chaves Playoffs</TabsTrigger>
           <TabsTrigger value="official-results">Resultados Oficiais</TabsTrigger>
         </TabsList>
@@ -61,6 +63,9 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent value="matches" className="mt-4">
           <AdminMatches />
+        </TabsContent>
+        <TabsContent value="bet-groups" className="mt-4">
+          <AdminBetGroups />
         </TabsContent>
         <TabsContent value="playoffs" className="mt-4">
           <PlayoffBrackets />

@@ -1,10 +1,18 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Trophy, Medal, Award, Flag, Swords } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Loader2, Trophy, Medal, Award, Flag, Swords, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { isGroupStage } from "@/lib/match-stage"
 import { POINTS_ADVANCE_KNOCKOUT, POINTS_EXACT, POINTS_RESULT } from "@/lib/match-result-scoring"
@@ -12,6 +20,7 @@ import { POINTS_ADVANCE_KNOCKOUT, POINTS_EXACT, POINTS_RESULT } from "@/lib/matc
 interface RankedPlayer {
   id: string
   display_name: string
+  bet_group_id: string | null
   total_points: number
   group_points: number
   knockout_points: number
@@ -21,10 +30,32 @@ interface RankedPlayer {
   settled_bets: number
 }
 
+interface BetGroupOption {
+  id: string
+  name: string
+  observations: string | null
+}
+
+const RANKING_SCOPE_GERAL = "__geral__"
+
+function sortPlayers(a: RankedPlayer, b: RankedPlayer) {
+  if (b.total_points !== a.total_points) return b.total_points - a.total_points
+  if (b.exact_hits !== a.exact_hits) return b.exact_hits - a.exact_hits
+  if (b.result_hits !== a.result_hits) return b.result_hits - a.result_hits
+  return a.display_name.localeCompare(b.display_name)
+}
+
 export default function RankingPage() {
   const [players, setPlayers] = useState<RankedPlayer[]>([])
+  const [groups, setGroups] = useState<BetGroupOption[]>([])
+  const [rankingScope, setRankingScope] = useState<string>(RANKING_SCOPE_GERAL)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const q = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("grupo") : null
+    if (q && /^\d+$/.test(q)) setRankingScope(q)
+  }, [])
 
   useEffect(() => {
     async function loadRanking() {
@@ -32,23 +63,33 @@ export default function RankingPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) setCurrentUserId(user.id)
 
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, display_name")
-        .order("display_name", { ascending: true })
+      const [profilesRes, finishedRes, groupsRes] = await Promise.all([
+        supabase.from("profiles").select("id, display_name, bet_group_id").order("display_name", { ascending: true }),
+        supabase
+          .from("matches")
+          .select("id, stage")
+          .eq("status", "finished")
+          .not("home_score", "is", null)
+          .not("away_score", "is", null),
+        supabase.from("bet_groups").select("id, name, observations").eq("is_deleted", false).order("name", { ascending: true }),
+      ])
+
+      const profiles = profilesRes.data
+      const finishedMatches = finishedRes.data
+      const groupsData = groupsRes.data
+
+      const groupList = (groupsData ?? []).map((g) => ({
+        id: String(g.id),
+        name: g.name as string,
+        observations: (g.observations as string | null) ?? null,
+      }))
+      setGroups(groupList)
 
       if (!profiles?.length) {
         setPlayers([])
         setLoading(false)
         return
       }
-
-      const { data: finishedMatches } = await supabase
-        .from("matches")
-        .select("id, stage")
-        .eq("status", "finished")
-        .not("home_score", "is", null)
-        .not("away_score", "is", null)
 
       const finishedIds = new Set((finishedMatches ?? []).map((m) => m.id))
       const stageByMatch = new Map((finishedMatches ?? []).map((m) => [m.id, m.stage as string]))
@@ -108,9 +149,12 @@ export default function RankingPage() {
           adv: 0,
           settled: 0,
         }
+        const bgRaw = (p as { bet_group_id?: number | string | null }).bet_group_id
         return {
           id: p.id,
           display_name: p.display_name,
+          bet_group_id:
+            bgRaw !== undefined && bgRaw !== null && String(bgRaw) !== "" ? String(bgRaw) : null,
           total_points: a.pts,
           group_points: a.groupPts,
           knockout_points: a.koPts,
@@ -121,18 +165,24 @@ export default function RankingPage() {
         }
       })
 
-      playerStats.sort((a, b) => {
-        if (b.total_points !== a.total_points) return b.total_points - a.total_points
-        if (b.exact_hits !== a.exact_hits) return b.exact_hits - a.exact_hits
-        if (b.result_hits !== a.result_hits) return b.result_hits - a.result_hits
-        return a.display_name.localeCompare(b.display_name)
-      })
-
+      playerStats.sort(sortPlayers)
       setPlayers(playerStats)
       setLoading(false)
     }
-    loadRanking()
+    void loadRanking()
   }, [])
+
+  const displayPlayers = useMemo(() => {
+    if (rankingScope === RANKING_SCOPE_GERAL) return players
+    return players.filter((p) => p.bet_group_id === rankingScope).sort(sortPlayers)
+  }, [players, rankingScope])
+
+  const selectedGroup = useMemo(() => {
+    if (rankingScope === RANKING_SCOPE_GERAL) return null
+    return groups.find((g) => g.id === rankingScope) ?? null
+  }, [groups, rankingScope])
+
+  const selectedGroupName = selectedGroup?.name ?? null
 
   if (loading) {
     return (
@@ -148,13 +198,13 @@ export default function RankingPage() {
     { icon: Award, colorClass: "text-chart-4" },
   ]
 
-  const byGroup = [...players].sort((a, b) => {
+  const byGroup = [...displayPlayers].sort((a, b) => {
     if (b.group_points !== a.group_points) return b.group_points - a.group_points
     if (b.exact_hits !== a.exact_hits) return b.exact_hits - a.exact_hits
     return a.display_name.localeCompare(b.display_name)
   })
 
-  const byKnockout = [...players].sort((a, b) => {
+  const byKnockout = [...displayPlayers].sort((a, b) => {
     if (b.knockout_points !== a.knockout_points) return b.knockout_points - a.knockout_points
     if (b.exact_hits !== a.exact_hits) return b.exact_hits - a.exact_hits
     return a.display_name.localeCompare(b.display_name)
@@ -162,6 +212,9 @@ export default function RankingPage() {
 
   const leaderGroup = byGroup[0]
   const leaderKo = byKnockout[0]
+
+  const scopeEmpty =
+    rankingScope !== RANKING_SCOPE_GERAL && !players.some((p) => p.bet_group_id === rankingScope)
 
   return (
     <div className="flex flex-col gap-6">
@@ -173,139 +226,215 @@ export default function RankingPage() {
         </p>
       </div>
 
-      {(leaderGroup && leaderGroup.group_points > 0) || (leaderKo && leaderKo.knockout_points > 0) ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {leaderGroup && leaderGroup.group_points > 0 && (
-            <Card className="border-primary/20 bg-primary/5">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base text-foreground">
-                  <Flag className="h-5 w-5 text-primary" />
-                  Fase de grupos — líder
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-lg font-bold text-foreground">{leaderGroup.display_name}</p>
-                <p className="text-2xl font-bold text-primary">{leaderGroup.group_points}</p>
-                <p className="text-xs text-muted-foreground">pontos só em jogos de grupos</p>
-              </CardContent>
-            </Card>
-          )}
-          {leaderKo && leaderKo.knockout_points > 0 && (
-            <Card className="border-secondary/30 bg-secondary/10">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base text-foreground">
-                  <Swords className="h-5 w-5 text-secondary-foreground" />
-                  Mata-mata — líder
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-lg font-bold text-foreground">{leaderKo.display_name}</p>
-                <p className="text-2xl font-bold text-primary">{leaderKo.knockout_points}</p>
-                <p className="text-xs text-muted-foreground">pontos só em jogos eliminatórios</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      ) : null}
-
-      {players.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          {players.slice(0, 3).map((player, i) => {
-            const podium = podiumIcons[i]
-            const Icon = podium.icon
-            return (
-              <Card
-                key={player.id}
-                className={cn("text-center", player.id === currentUserId && "ring-2 ring-primary/30")}
-              >
-                <CardContent className="flex flex-col items-center gap-2 p-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                    <Icon className={cn("h-6 w-6", podium.colorClass)} />
-                  </div>
-                  <span className="text-lg font-bold text-card-foreground">{player.display_name}</span>
-                  <span className="text-3xl font-bold text-primary">{player.total_points}</span>
-                  <span className="text-xs text-muted-foreground">pontos totais</span>
-                  <div className="flex flex-wrap justify-center gap-1">
-                    <Badge variant="outline" className="border-border text-xs text-muted-foreground">
-                      G {player.group_points}
-                    </Badge>
-                    <Badge variant="outline" className="border-border text-xs text-muted-foreground">
-                      KO {player.knockout_points}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-card-foreground">Classificacao completa</CardTitle>
+      <Card className="border-border/80">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+            <Users className="h-5 w-5 text-primary" />
+            Tipo de ranking
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          {players.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">Nenhum participante ainda</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[32rem] text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="pb-3 text-left font-medium text-muted-foreground">#</th>
-                    <th className="pb-3 text-left font-medium text-muted-foreground">Jogador</th>
-                    <th className="pb-3 text-center font-medium text-muted-foreground" title="Apostas em partidas concluidas">
-                      Apostas*
-                    </th>
-                    <th className="pb-3 text-center font-medium text-muted-foreground">Grupos</th>
-                    <th className="pb-3 text-center font-medium text-muted-foreground">Mata-mata</th>
-                    <th className="pb-3 text-center font-medium text-muted-foreground">Exatos</th>
-                    <th className="pb-3 text-center font-medium text-muted-foreground">+7</th>
-                    <th className="pb-3 text-center font-medium text-muted-foreground">+5</th>
-                    <th className="pb-3 text-right font-medium text-muted-foreground">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {players.map((player, i) => (
-                    <tr
-                      key={player.id}
-                      className={cn(
-                        "border-b border-border last:border-0",
-                        player.id === currentUserId && "bg-primary/5",
-                      )}
-                    >
-                      <td className="py-3 text-left font-medium text-foreground">{i + 1}</td>
-                      <td className="py-3 text-left">
-                        <span
-                          className={cn(
-                            "font-medium",
-                            player.id === currentUserId ? "text-primary" : "text-foreground",
-                          )}
-                        >
-                          {player.display_name}
-                          {player.id === currentUserId && (
-                            <span className="ml-1 text-xs text-muted-foreground">(voce)</span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="py-3 text-center text-muted-foreground">{player.settled_bets}</td>
-                      <td className="py-3 text-center text-muted-foreground">{player.group_points}</td>
-                      <td className="py-3 text-center text-muted-foreground">{player.knockout_points}</td>
-                      <td className="py-3 text-center text-muted-foreground">{player.exact_hits}</td>
-                      <td className="py-3 text-center text-muted-foreground">{player.result_hits}</td>
-                      <td className="py-3 text-center text-muted-foreground">{player.advance_hits}</td>
-                      <td className="py-3 text-right font-bold text-primary">{player.total_points}</td>
-                    </tr>
+        <CardContent className="pt-0">
+          <div
+            className={cn(
+              "grid gap-6",
+              rankingScope !== RANKING_SCOPE_GERAL && "lg:grid-cols-2 lg:items-stretch lg:gap-8",
+            )}
+          >
+            <div className="flex min-w-0 flex-col gap-2 lg:max-w-md">
+              <Label htmlFor="ranking-scope" className="text-muted-foreground">
+                Geral (todos) ou um grupo a que te ligaste na página Grupos (um grupo por conta).
+              </Label>
+              <Select value={rankingScope} onValueChange={setRankingScope}>
+                <SelectTrigger id="ranking-scope" className="w-full">
+                  <SelectValue placeholder="Escolher…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={RANKING_SCOPE_GERAL}>Ranking geral (todos os jogadores)</SelectItem>
+                  {groups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      Grupo: {g.name}
+                    </SelectItem>
                   ))}
-                </tbody>
-              </table>
-              <p className="mt-3 text-xs text-muted-foreground">
-                * Apostas em jogos com resultado oficial. +7 = acerto de resultado sem exato; +5 = quem passa (mata-mata).
-              </p>
+                </SelectContent>
+              </Select>
+              {rankingScope !== RANKING_SCOPE_GERAL && selectedGroupName && (
+                <p className="text-xs text-muted-foreground">
+                  Contam só apostadores com este grupo no perfil.
+                </p>
+              )}
             </div>
-          )}
+
+            {rankingScope !== RANKING_SCOPE_GERAL && selectedGroup ? (
+              <div className="flex min-h-[8rem] flex-col rounded-xl border border-border/80 bg-muted/25 p-4 lg:min-h-0">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Grupo:
+                </p>
+                {selectedGroup.observations?.trim() ? (
+                  <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                    {selectedGroup.observations}
+                  </p>
+                ) : (
+                  <p className="text-sm italic text-muted-foreground">
+                    Este grupo ainda não tem texto de descrição. Podes editá-lo no admin ou na página Grupos (criador).
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
+
+      {scopeEmpty ? (
+        <Card className="border-dashed border-border bg-muted/20">
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Nenhum apostador tem este grupo no perfil. Escolhe &quot;Entrar no grupo&quot; em /groups.
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {(leaderGroup && leaderGroup.group_points > 0) || (leaderKo && leaderKo.knockout_points > 0) ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {leaderGroup && leaderGroup.group_points > 0 && (
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
+                      <Flag className="h-5 w-5 text-primary" />
+                      Fase de grupos — líder
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-lg font-bold text-foreground">{leaderGroup.display_name}</p>
+                    <p className="text-2xl font-bold text-primary">{leaderGroup.group_points}</p>
+                    <p className="text-xs text-muted-foreground">pontos só em jogos de grupos</p>
+                  </CardContent>
+                </Card>
+              )}
+              {leaderKo && leaderKo.knockout_points > 0 && (
+                <Card className="border-secondary/30 bg-secondary/10">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
+                      <Swords className="h-5 w-5 text-secondary-foreground" />
+                      Mata-mata — líder
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-lg font-bold text-foreground">{leaderKo.display_name}</p>
+                    <p className="text-2xl font-bold text-primary">{leaderKo.knockout_points}</p>
+                    <p className="text-xs text-muted-foreground">pontos só em jogos eliminatórios</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : null}
+
+          {displayPlayers.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              {displayPlayers.slice(0, 3).map((player, i) => {
+                const podium = podiumIcons[i]
+                const Icon = podium.icon
+                return (
+                  <Card
+                    key={player.id}
+                    className={cn("text-center", player.id === currentUserId && "ring-2 ring-primary/30")}
+                  >
+                    <CardContent className="flex flex-col items-center gap-2 p-6">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                        <Icon className={cn("h-6 w-6", podium.colorClass)} />
+                      </div>
+                      <span className="text-lg font-bold text-card-foreground">{player.display_name}</span>
+                      <span className="text-3xl font-bold text-primary">{player.total_points}</span>
+                      <span className="text-xs text-muted-foreground">pontos totais</span>
+                      <div className="flex flex-wrap justify-center gap-1">
+                        <Badge variant="outline" className="border-border text-xs text-muted-foreground">
+                          G {player.group_points}
+                        </Badge>
+                        <Badge variant="outline" className="border-border text-xs text-muted-foreground">
+                          KO {player.knockout_points}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-card-foreground">
+                {rankingScope === RANKING_SCOPE_GERAL
+                  ? "Classificacao geral"
+                  : `Classificacao — ${selectedGroupName ?? "grupo"}`}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {displayPlayers.length === 0 ? (
+                <p className="py-8 text-center text-muted-foreground">Nenhum participante neste âmbito</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[32rem] text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="pb-3 text-left font-medium text-muted-foreground">#</th>
+                        <th className="pb-3 text-left font-medium text-muted-foreground">Jogador</th>
+                        <th
+                          className="pb-3 text-center font-medium text-muted-foreground"
+                          title="Apostas em partidas concluidas"
+                        >
+                          Apostas*
+                        </th>
+                        <th className="pb-3 text-center font-medium text-muted-foreground">Grupos</th>
+                        <th className="pb-3 text-center font-medium text-muted-foreground">Mata-mata</th>
+                        <th className="pb-3 text-center font-medium text-muted-foreground">Exatos</th>
+                        <th className="pb-3 text-center font-medium text-muted-foreground">+7</th>
+                        <th className="pb-3 text-center font-medium text-muted-foreground">+5</th>
+                        <th className="pb-3 text-right font-medium text-muted-foreground">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayPlayers.map((player, i) => (
+                        <tr
+                          key={player.id}
+                          className={cn(
+                            "border-b border-border last:border-0",
+                            player.id === currentUserId && "bg-primary/5",
+                          )}
+                        >
+                          <td className="py-3 text-left font-medium text-foreground">{i + 1}</td>
+                          <td className="py-3 text-left">
+                            <span
+                              className={cn(
+                                "font-medium",
+                                player.id === currentUserId ? "text-primary" : "text-foreground",
+                              )}
+                            >
+                              {player.display_name}
+                              {player.id === currentUserId && (
+                                <span className="ml-1 text-xs text-muted-foreground">(voce)</span>
+                              )}
+                            </span>
+                          </td>
+                          <td className="py-3 text-center text-muted-foreground">{player.settled_bets}</td>
+                          <td className="py-3 text-center text-muted-foreground">{player.group_points}</td>
+                          <td className="py-3 text-center text-muted-foreground">{player.knockout_points}</td>
+                          <td className="py-3 text-center text-muted-foreground">{player.exact_hits}</td>
+                          <td className="py-3 text-center text-muted-foreground">{player.result_hits}</td>
+                          <td className="py-3 text-center text-muted-foreground">{player.advance_hits}</td>
+                          <td className="py-3 text-right font-bold text-primary">{player.total_points}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    * Apostas em jogos com resultado oficial. +7 = acerto de resultado sem exato; +5 = quem passa
+                    (mata-mata).
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   )
 }

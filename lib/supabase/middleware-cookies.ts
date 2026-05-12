@@ -1,5 +1,8 @@
 import type { NextRequest } from 'next/server'
 
+/** Igual a `@supabase/ssr` cookies.ts — valor guardado como `base64-` + Base64URL (UTF-8). */
+const BASE64_COOKIE_PREFIX = "base64-"
+
 /** Chave do cookie de sessão SSR (`sb-<project-ref>-auth-token`). */
 export function supabaseAuthCookieBaseKey(supabaseUrl: string): string | null {
   try {
@@ -39,15 +42,33 @@ type StoredAuth = {
   user?: { id?: string }
 }
 
+/** Reverte o encoding do `createBrowserClient` (prefixo + Base64URL). */
+function decodeSupabaseStoredCookiePayload(raw: string): string | null {
+  try {
+    if (raw.startsWith(BASE64_COOKIE_PREFIX)) {
+      const b64url = raw.slice(BASE64_COOKIE_PREFIX.length)
+      return base64DecodeUtf8(b64url)
+    }
+    return raw
+  } catch {
+    return null
+  }
+}
+
 function parseStoredAuth(raw: string): StoredAuth | null {
-  const tries: Array<() => StoredAuth> = [
-    () => JSON.parse(raw) as StoredAuth,
-    () => JSON.parse(decodeURIComponent(raw)) as StoredAuth,
-    () => JSON.parse(base64DecodeUtf8(raw)) as StoredAuth,
-  ]
-  for (const fn of tries) {
+  const candidates: string[] = []
+  const decoded = decodeSupabaseStoredCookiePayload(raw)
+  if (decoded) candidates.push(decoded)
+  candidates.push(raw)
+  try {
+    candidates.push(decodeURIComponent(raw))
+  } catch {
+    /* ignore */
+  }
+
+  for (const str of candidates) {
     try {
-      const v = fn()
+      const v = JSON.parse(str) as StoredAuth
       if (v && (v.access_token || v.refresh_token)) return v
     } catch {
       continue

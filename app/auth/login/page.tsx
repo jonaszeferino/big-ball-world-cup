@@ -37,6 +37,8 @@ export default function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
+      await supabase.auth.getSession()
+      router.refresh()
       router.push("/matches")
     } catch (err: unknown) {
       setError(formatAuthError(err))

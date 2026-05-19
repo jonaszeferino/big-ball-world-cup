@@ -4,7 +4,10 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
-import { findNextUpcomingMatchWithoutBet } from "@/lib/next-match-bet-reminder"
+import {
+  findNextUpcomingMatchWithoutBet,
+  type NextMatchBetReminderMatch,
+} from "@/lib/next-match-bet-reminder"
 import { formatMatchDateTimeBrazil } from "@/lib/match-datetime-brazil"
 
 const SESSION_KEY = "bbwc-bet-reminder-toast"
@@ -52,18 +55,8 @@ export function NextMatchBetReminder() {
       if (cancelled) return
       if (matchesRes.error || betsRes.error) return
 
-      const rows = matchesRes.data as
-        | {
-            id: string
-            match_date: string
-            status: string
-            stage: string
-            home_team: { code: string; name: string }
-            away_team: { code: string; name: string }
-          }[]
-        | null
-
-      if (!rows?.length) return
+      const rows = (matchesRes.data ?? []) as unknown as NextMatchBetReminderMatch[]
+      if (!rows.length) return
 
       const betIds = new Set((betsRes.data ?? []).map((b) => b.match_id as string))
       const next = findNextUpcomingMatchWithoutBet(rows, betIds, Date.now())

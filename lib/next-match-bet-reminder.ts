@@ -32,3 +32,19 @@ export function findNextUpcomingMatchWithoutBet(
   if (!next || betMatchIds.has(next.id)) return null
   return next
 }
+
+/**
+ * Próximas partidas ainda agendadas e antes do apito (mesmo critério que o aviso de aposta),
+ * por ordem cronológica, limitadas a `limit`.
+ */
+export function getUpcomingOpenMatches(
+  matches: NextMatchBetReminderMatch[],
+  nowMs: number,
+  limit: number,
+): NextMatchBetReminderMatch[] {
+  const open = matches.filter(
+    (m) => m.status === "scheduled" && isBeforeMatchKickoff(m.match_date, nowMs),
+  )
+  open.sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime())
+  return open.slice(0, Math.max(0, limit))
+}

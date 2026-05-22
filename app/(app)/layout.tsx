@@ -11,7 +11,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <NextMatchBetReminder />
       <Navbar />
       <WorldCupCountdownBanner />
-      <main className="mx-auto w-full max-w-2xl px-3 pb-24 pt-4 sm:px-4 md:max-w-5xl md:px-6 md:pb-8 md:pt-6">
+      <main className="mx-auto w-full max-w-2xl px-3 pb-32 pt-4 sm:px-4 md:max-w-5xl md:px-6 md:pb-8 md:pt-6">
         {children}
       </main>
     </div>

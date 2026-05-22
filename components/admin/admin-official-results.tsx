@@ -4,6 +4,15 @@ import React from "react"
 import { useEffect, useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,12 +20,13 @@ import { Check, Loader2, RotateCcw, Save } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { getCountryFlag } from "@/lib/country-flags"
-import { applyMatchResultAndUpdateBets, reopenMatchAndResetBets } from "@/lib/match-result-scoring"
+import { applyMatchResultAndUpdateBets, reopenMatchAndResetBets, matchesPenaltyColumnsMissingError } from "@/lib/match-result-scoring"
 import {
   getOfficialResultLetters,
   requiresPenaltyScores,
   validatePenaltyPair,
 } from "@/lib/match-stage"
+import { MatchGoalScorersInline, type MatchGoalScorerRow } from "@/components/admin/match-goal-scorers-inline"
 
 interface Match {
   id: string
@@ -89,11 +99,14 @@ export function AdminOfficialResults() {
   const [matches, setMatches] = useState<Match[]>([])
   const [savedResults, setSavedResults] = useState<SavedResult[]>([])
   const [results, setResults] = useState<Record<string, TeamResult>>({})
+  const [goalRows, setGoalRows] = useState<MatchGoalScorerRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reopenTarget, setReopenTarget] = useState<Match | null>(null)
 
   const loadMatches = useCallback(async () => {
+    setError(null)
     const supabase = createClient()
     const selectWithPens =
       "id, match_date, group_name, stage, status, home_score, away_score, home_penalty_score, away_penalty_score, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)"
@@ -101,10 +114,14 @@ export function AdminOfficialResults() {
       "id, match_date, group_name, stage, status, home_score, away_score, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)"
 
     const first = await supabase.from("matches").select(selectWithPens).order("match_date", { ascending: true })
+    const goalsFetch = supabase.from("match_goal_scorers").select("id, match_id, team_id, scorer_name, goals")
+
     const rows =
       first.error != null
         ? (await supabase.from("matches").select(selectBase).order("match_date", { ascending: true })).data
         : first.data
+
+    const { data: goalsData, error: goalsErr } = await goalsFetch
 
     if (rows) {
       const mapped = rows.map((m: Record<string, unknown>) => ({
@@ -122,10 +139,26 @@ export function AdminOfficialResults() {
       }))
       setMatches(mapped)
 
+      if (goalsErr) {
+        setError(goalsErr.message)
+        setGoalRows([])
+      } else {
+        setGoalRows((goalsData ?? []) as MatchGoalScorerRow[])
+      }
+
       const { data: saved } = await supabase.from("teams_results").select("*")
-      setSavedResults((saved || []) as SavedResult[])
+      const normalized = (saved ?? []).map((r: Record<string, unknown>) => ({
+        code: String(r.code ?? ""),
+        team_home: String(r.team_home ?? ""),
+        team_away: String(r.team_away ?? ""),
+        goals_home: Math.max(0, Math.floor(Number(r.goals_home)) || 0),
+        goals_away: Math.max(0, Math.floor(Number(r.goals_away)) || 0),
+        created_at: String(r.created_at ?? ""),
+      }))
+      setSavedResults(normalized as SavedResult[])
     } else {
       setMatches([])
+      setGoalRows([])
     }
     setIsLoading(false)
   }, [])
@@ -142,7 +175,10 @@ export function AdminOfficialResults() {
   const getDefaultScores = (match: Match): TeamResult => {
     const sr = savedByCode(resultCode(match))
     if (sr) {
-      const t: TeamResult = { home_goals: sr.goals_home, away_goals: sr.goals_away }
+      const t: TeamResult = {
+        home_goals: Math.max(0, Math.floor(Number(sr.goals_home)) || 0),
+        away_goals: Math.max(0, Math.floor(Number(sr.goals_away)) || 0),
+      }
       if (requiresPenaltyScores(match.stage, t.home_goals, t.away_goals)) {
         t.home_pens = match.home_penalty_score ?? 0
         t.away_pens = match.away_penalty_score ?? 0
@@ -150,7 +186,10 @@ export function AdminOfficialResults() {
       return t
     }
     if (match.home_score != null && match.away_score != null) {
-      const t: TeamResult = { home_goals: match.home_score, away_goals: match.away_score }
+      const t: TeamResult = {
+        home_goals: Math.max(0, Math.floor(Number(match.home_score)) || 0),
+        away_goals: Math.max(0, Math.floor(Number(match.away_score)) || 0),
+      }
       if (requiresPenaltyScores(match.stage, t.home_goals, t.away_goals)) {
         t.home_pens = match.home_penalty_score ?? 0
         t.away_pens = match.away_penalty_score ?? 0
@@ -229,19 +268,27 @@ export function AdminOfficialResults() {
       return
     }
 
-    const { error: penErr } = await supabase
-      .from("matches")
-      .update(
-        requiresPenaltyScores(match.stage, homeGoals, awayGoals)
-          ? { home_penalty_score: homePens, away_penalty_score: awayPens }
-          : { home_penalty_score: null, away_penalty_score: null },
-      )
-      .eq("id", match.id)
+    const needPenUpdate = requiresPenaltyScores(match.stage, homeGoals, awayGoals)
+    if (needPenUpdate) {
+      const { error: penErr } = await supabase
+        .from("matches")
+        .update({
+          home_penalty_score: homePens,
+          away_penalty_score: awayPens,
+        })
+        .eq("id", match.id)
 
-    if (penErr) {
-      setError(penErr.message)
-      setIsSubmitting(false)
-      return
+      if (penErr) {
+        if (penErr.message && matchesPenaltyColumnsMissingError(penErr.message)) {
+          setError(
+            `${penErr.message} Para salvar pênaltis no mata-mata, rode no Supabase (SQL Editor) o arquivo scripts/005_match_penalties.sql.`,
+          )
+        } else {
+          setError(penErr.message)
+        }
+        setIsSubmitting(false)
+        return
+      }
     }
 
     await loadMatches()
@@ -288,14 +335,7 @@ export function AdminOfficialResults() {
     setIsSubmitting(false)
   }
 
-  const handleReopenBolao = async (match: Match) => {
-    if (
-      !window.confirm(
-        "Reabrir esta partida no bolão? Os pontos deste jogo são zerados, o placar sai da partida e a linha de resultado oficial é removida.",
-      )
-    ) {
-      return
-    }
+  const performReopenBolao = async (match: Match) => {
     setError(null)
     setIsSubmitting(true)
     const supabase = createClient()
@@ -311,46 +351,7 @@ export function AdminOfficialResults() {
     await supabase.from("teams_results").delete().eq("code", code)
     await loadMatches()
     setIsSubmitting(false)
-  }
-
-  const handleReopenAll = async () => {
-    if (
-      !window.confirm(
-        "Reabrir TODAS as partidas no bolão e apagar todos os resultados oficiais? Isto zera pontos dos jogos fechados e limpa a tabela de grupos.",
-      )
-    ) {
-      return
-    }
-    setError(null)
-    setIsSubmitting(true)
-    const supabase = createClient()
-
-    const { data: finished } = await supabase.from("matches").select("id").eq("status", "finished")
-    for (const row of finished ?? []) {
-      const { error: e } = await reopenMatchAndResetBets(supabase, row.id as string)
-      if (e) {
-        setError(e)
-        setIsSubmitting(false)
-        await loadMatches()
-        return
-      }
-    }
-
-    const { data: allCodes } = await supabase.from("teams_results").select("code")
-    const codes = (allCodes ?? []).map((r) => r.code as string).filter(Boolean)
-    if (codes.length > 0) {
-      const { error: delErr } = await supabase.from("teams_results").delete().in("code", codes)
-      if (delErr) {
-        setError(delErr.message)
-        setIsSubmitting(false)
-        await loadMatches()
-        return
-      }
-    }
-
-    setResults({})
-    await loadMatches()
-    setIsSubmitting(false)
+    setReopenTarget(null)
   }
 
   if (isLoading) {
@@ -367,6 +368,39 @@ export function AdminOfficialResults() {
 
   return (
     <div className="flex flex-col gap-6">
+      <AlertDialog open={reopenTarget !== null} onOpenChange={(open) => !open && !isSubmitting && setReopenTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reabrir esta partida no bolão?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-left">
+                <p>
+                  <strong className="font-medium text-foreground">
+                    {reopenTarget?.home_team.name} × {reopenTarget?.away_team.name}
+                  </strong>
+                </p>
+                <p>
+                  Os pontos deste jogo nas apostas são zerados, o placar sai da partida e o{" "}
+                  <strong className="font-medium text-foreground">resultado oficial guardado</strong> (tabela de grupos) é removido.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              className="gap-2"
+              disabled={isSubmitting || !reopenTarget}
+              onClick={() => reopenTarget && void performReopenBolao(reopenTarget)}
+            >
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Confirmar reabertura
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {error && (
         <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2" role="alert">
           {error}
@@ -374,21 +408,18 @@ export function AdminOfficialResults() {
       )}
 
       <Card>
-        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle className="text-card-foreground">Resultados e encerramento no bolão</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              <strong className="font-medium text-foreground">Salvar resultado</strong> grava só a tabela de grupos (resultados oficiais); o bolão continua
+        <CardHeader>
+          <CardTitle className="text-card-foreground">Resultados e encerramento no bolão</CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">
+              <strong className="font-medium text-foreground">Salvar resultado</strong> grava só a tabela de grupos (resultados oficiais); o bolão segue
               aberto para apostas até você clicar em <strong className="font-medium text-foreground">Encerrar partida no bolão</strong>, que aplica
-              placar, pontos e ranking. A partir dos <strong className="font-medium text-foreground">16-avos</strong>, empate no tempo regular exige
-              placar de <strong className="font-medium text-foreground">penáltis</strong> com vencedor (o bolão continua a pontuar só o resultado do
-              tempo regular).
+              placar, pontos e ranking. O bloco <strong className="font-medium text-foreground">Marcadores</strong> usa o mesmo placar dos campos{" "}
+              <strong className="font-medium text-foreground">Tempo regular</strong> (mesmo depois de salvar o resultado) — você pode preencher antes ou
+              depois, só não pode passar do número de <strong className="font-medium text-foreground">gols</strong> de cada time. Nas{" "}
+              <strong className="font-medium text-foreground">fases eliminatórias</strong>, empate no tempo regulamentar exige placar de{" "}
+              <strong className="font-medium text-foreground">pênaltis</strong> com vencedor (o bolão continua pontuando só o resultado do tempo
+              regulamentar).
             </p>
-          </div>
-          <Button type="button" variant="outline" size="sm" disabled={isSubmitting} onClick={() => void handleReopenAll()} className="shrink-0 gap-1.5">
-            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-            Reabrir tudo
-          </Button>
         </CardHeader>
         <CardContent>
           {openBolaoMatches.length === 0 ? (
@@ -397,13 +428,16 @@ export function AdminOfficialResults() {
             <div className="flex flex-col gap-4">
               {openBolaoMatches.map((match) => {
                 const s = getScores(match)
+                const maxMarcadoresHome = Math.max(0, Math.floor(Number(s.home_goals)) || 0)
+                const maxMarcadoresAway = Math.max(0, Math.floor(Number(s.away_goals)) || 0)
                 const hasOfficial = !!savedByCode(resultCode(match))
                 const showPens = requiresPenaltyScores(match.stage, s.home_goals, s.away_goals)
                 return (
                   <div
                     key={match.id}
-                    className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 p-4 lg:flex-row lg:items-center lg:justify-between"
+                    className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 p-4"
                   >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex flex-1 flex-col gap-2 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-medium text-muted-foreground">
@@ -500,6 +534,19 @@ export function AdminOfficialResults() {
                       </div>
                     </div>
                   </div>
+                      <MatchGoalScorersInline
+                        matchId={match.id}
+                        homeTeamId={match.home_team.id}
+                        awayTeamId={match.away_team.id}
+                        homeTeamCode={match.home_team.code}
+                        awayTeamCode={match.away_team.code}
+                        maxHomeGoals={maxMarcadoresHome}
+                        maxAwayGoals={maxMarcadoresAway}
+                      rows={goalRows.filter((r) => r.match_id === match.id)}
+                      disabled={isSubmitting}
+                      onRefresh={loadMatches}
+                    />
+                  </div>
                 )
               })}
             </div>
@@ -515,11 +562,15 @@ export function AdminOfficialResults() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-2">
-              {closedBolaoMatches.map((match) => (
+              {closedBolaoMatches.map((match) => {
+                const hg = Math.max(0, Math.floor(Number(match.home_score ?? 0)) || 0)
+                const ag = Math.max(0, Math.floor(Number(match.away_score ?? 0)) || 0)
+                return (
                 <div
                   key={match.id}
-                  className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3"
                 >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-1 flex-col gap-1 text-sm sm:flex-row sm:flex-wrap sm:items-center">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-lg">{getCountryFlag(match.home_team.name)}</span>
@@ -547,13 +598,27 @@ export function AdminOfficialResults() {
                     size="sm"
                     disabled={isSubmitting}
                     className="gap-2 shrink-0"
-                    onClick={() => void handleReopenBolao(match)}
+                    onClick={() => setReopenTarget(match)}
                   >
                     <RotateCcw className="h-4 w-4" />
                     Reabrir bolão
                   </Button>
+                  </div>
+                  <MatchGoalScorersInline
+                    matchId={match.id}
+                    homeTeamId={match.home_team.id}
+                    awayTeamId={match.away_team.id}
+                    homeTeamCode={match.home_team.code}
+                    awayTeamCode={match.away_team.code}
+                    maxHomeGoals={hg}
+                    maxAwayGoals={ag}
+                    rows={goalRows.filter((r) => r.match_id === match.id)}
+                    disabled={isSubmitting}
+                    onRefresh={loadMatches}
+                  />
                 </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>

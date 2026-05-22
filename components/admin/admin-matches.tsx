@@ -5,12 +5,21 @@ import React from "react"
 import { useEffect, useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Plus, RotateCcw, Trash2 } from "lucide-react"
+import { Loader2, Plus, RotateCcw, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { reopenMatchAndResetBets } from "@/lib/match-result-scoring"
@@ -61,7 +70,7 @@ function RegisteredMatchRow({
   stageLabelFn,
   disabled,
   onSaveDate,
-  onReopenBolao,
+  onRequestReopenBolao,
   onDelete,
 }: {
   match: Match
@@ -72,7 +81,8 @@ function RegisteredMatchRow({
   stageLabelFn: (s: string) => string
   disabled: boolean
   onSaveDate: (matchId: string, datetimeLocal: string) => void | Promise<void>
-  onReopenBolao: (match: Match) => void | Promise<void>
+  /** Abre o diálogo de confirmação para reabrir só esta partida. */
+  onRequestReopenBolao: (match: Match) => void
   onDelete: (id: string) => void
 }) {
   const [dateValue, setDateValue] = useState(() => toDatetimeLocalValue(match.match_date))
@@ -148,7 +158,7 @@ function RegisteredMatchRow({
             size="sm"
             className="gap-1.5"
             disabled={disabled}
-            onClick={() => void onReopenBolao(match)}
+            onClick={() => onRequestReopenBolao(match)}
           >
             <RotateCcw className="h-4 w-4" />
             Reabrir bolão
@@ -189,6 +199,7 @@ export function AdminMatches() {
   const [groupName, setGroupName] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reopenTarget, setReopenTarget] = useState<Match | null>(null)
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -285,14 +296,7 @@ export function AdminMatches() {
     loadData()
   }
 
-  const handleReopenBolao = async (match: Match) => {
-    if (
-      !window.confirm(
-        "Reabrir esta partida no bolão? Os pontos deste jogo nas apostas são zerados, o placar sai da partida (matches) e a linha em teams_results é removida, se existir.",
-      )
-    ) {
-      return
-    }
+  const performReopenBolao = async (match: Match) => {
     setIsSubmitting(true)
     setError(null)
     const supabase = createClient()
@@ -308,6 +312,7 @@ export function AdminMatches() {
     await supabase.from("teams_results").delete().eq("code", code)
     await loadData()
     setIsSubmitting(false)
+    setReopenTarget(null)
   }
 
   const stageLabel = (s: string) => STAGES.find((st) => st.value === s)?.label || s
@@ -320,6 +325,39 @@ export function AdminMatches() {
 
   return (
     <div className="flex flex-col gap-6">
+      <AlertDialog open={reopenTarget !== null} onOpenChange={(open) => !open && !isSubmitting && setReopenTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reabrir esta partida no bolão?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-left">
+                <p>
+                  <strong className="font-medium text-foreground">
+                    {reopenTarget?.home_team.name} × {reopenTarget?.away_team.name}
+                  </strong>
+                </p>
+                <p>
+                  Os pontos deste jogo nas apostas são zerados, o placar sai da partida (<span className="font-medium text-foreground">matches</span>)
+                  e a linha em <span className="font-medium text-foreground">teams_results</span> é removida, se existir.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              className="gap-2"
+              disabled={isSubmitting || !reopenTarget}
+              onClick={() => reopenTarget && void performReopenBolao(reopenTarget)}
+            >
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Confirmar reabertura
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {error && (
         <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2" role="alert">
           {error}
@@ -460,7 +498,7 @@ export function AdminMatches() {
                                 stageLabelFn={stageLabel}
                                 disabled={isSubmitting}
                                 onSaveDate={handleUpdateMatchDate}
-                                onReopenBolao={handleReopenBolao}
+                                onRequestReopenBolao={setReopenTarget}
                                 onDelete={handleDelete}
                               />
                             ))}
@@ -482,7 +520,7 @@ export function AdminMatches() {
                         stageLabelFn={stageLabel}
                         disabled={isSubmitting}
                         onSaveDate={handleUpdateMatchDate}
-                        onReopenBolao={handleReopenBolao}
+                        onRequestReopenBolao={setReopenTarget}
                         onDelete={handleDelete}
                       />
                     ))}

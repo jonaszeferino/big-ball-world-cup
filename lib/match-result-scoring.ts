@@ -6,6 +6,15 @@ import {
   validatePenaltyPair,
 } from "@/lib/match-stage"
 
+/** PostgREST quando as colunas home_penalty_score / away_penalty_score ainda não existem no banco. Rode scripts/005_match_penalties.sql no Supabase. */
+export function matchesPenaltyColumnsMissingError(message: string): boolean {
+  return (
+    typeof message === "string" &&
+    message.includes("penalty_score") &&
+    (message.includes("schema cache") || message.includes("Could not find"))
+  )
+}
+
 export type BetPointsContext = {
   stage: string
   homeTeamId: string
@@ -145,16 +154,23 @@ export async function applyMatchResultAndUpdateBets(
     awayPen = options!.awayPenalty!
   }
 
-  const { error: matchErr } = await supabase
-    .from("matches")
-    .update({
-      home_score: homeScore,
-      away_score: awayScore,
-      home_penalty_score: homePen,
-      away_penalty_score: awayPen,
-      status: "finished",
-    })
-    .eq("id", matchId)
+  const patch: Record<string, unknown> = {
+    home_score: homeScore,
+    away_score: awayScore,
+    status: "finished",
+  }
+  if (requiresPenaltyScores(stage, homeScore, awayScore)) {
+    patch.home_penalty_score = homePen
+    patch.away_penalty_score = awayPen
+  }
+
+  const { error: matchErr } = await supabase.from("matches").update(patch).eq("id", matchId)
+
+  if (matchErr && matchesPenaltyColumnsMissingError(matchErr.message) && requiresPenaltyScores(stage, homeScore, awayScore)) {
+    return {
+      error: `${matchErr.message} — No Supabase, execute o script scripts/005_match_penalties.sql para criar as colunas de pênaltis.`,
+    }
+  }
 
   if (matchErr) return { error: matchErr.message }
 
@@ -239,6 +255,9 @@ export async function reopenMatchAndResetBets(
   supabase: SupabaseClient,
   matchId: string,
 ): Promise<{ error: string | null }> {
+  const { error: delScorersErr } = await supabase.from("match_goal_scorers").delete().eq("match_id", matchId)
+  if (delScorersErr) return { error: delScorersErr.message }
+
   const { data: bets } = await supabase
     .from("bets")
     .select("id, user_id, points_earned")
@@ -275,7 +294,7 @@ export async function reopenMatchAndResetBets(
     }
   }
 
-  const { error: matchErr } = await supabase
+  let { error: matchErr } = await supabase
     .from("matches")
     .update({
       status: "scheduled",
@@ -285,6 +304,17 @@ export async function reopenMatchAndResetBets(
       away_penalty_score: null,
     })
     .eq("id", matchId)
+
+  if (matchErr && matchesPenaltyColumnsMissingError(matchErr.message)) {
+    ;({ error: matchErr } = await supabase
+      .from("matches")
+      .update({
+        status: "scheduled",
+        home_score: null,
+        away_score: null,
+      })
+      .eq("id", matchId))
+  }
 
   if (matchErr) return { error: matchErr.message }
   return { error: null }

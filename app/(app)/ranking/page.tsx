@@ -12,7 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Loader2, Trophy, Medal, Award, Flag, Swords, Users } from "lucide-react"
+import Link from "next/link"
+import { Loader2, Trophy, Medal, Award, Flag, Swords, Users, Target } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { isGroupStage } from "@/lib/match-stage"
 import { POINTS_ADVANCE_KNOCKOUT, POINTS_EXACT, POINTS_RESULT } from "@/lib/match-result-scoring"
@@ -218,12 +220,20 @@ export default function RankingPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Ranking</h1>
-        <p className="text-sm text-muted-foreground">
-          So entram jogos com <strong className="font-medium text-foreground">placar oficial</strong> guardado no admin.
-          Pontos: +{POINTS_EXACT} exato, +{POINTS_RESULT} resultado, +{POINTS_ADVANCE_KNOCKOUT} quem passa (mata-mata).
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Ranking</h1>
+          <p className="text-sm text-muted-foreground">
+            So entram jogos com <strong className="font-medium text-foreground">placar oficial</strong> guardado no admin.
+            Pontos: +{POINTS_EXACT} exato, +{POINTS_RESULT} resultado, +{POINTS_ADVANCE_KNOCKOUT} quem passa (mata-mata).
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm" className="shrink-0 gap-2 self-start">
+          <Link href="/scorers">
+            <Target className="h-4 w-4" />
+            Artilheiros da Copa
+          </Link>
+        </Button>
       </div>
 
       <Card className="border-border/80">

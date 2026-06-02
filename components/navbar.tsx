@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { getUserSafe } from "@/lib/supabase/auth-session"
 import { Button } from "@/components/ui/button"
 import { Trophy, BarChart3, Gamepad2, Shield, LogOut, BookOpen, Users, Target } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -22,9 +23,7 @@ export function Navbar() {
   useEffect(() => {
     const supabase = createClient()
     async function loadProfile() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { user } = await getUserSafe(supabase)
       if (user) {
         const { data } = await supabase.from("profiles").select("id, display_name, is_admin").eq("id", user.id).single()
         if (data) setProfile(data)

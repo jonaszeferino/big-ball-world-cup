@@ -1,6 +1,7 @@
 import React from "react"
 import type { Metadata } from "next"
 import { Inter, Space_Mono } from "next/font/google"
+import { AuthSessionRepair } from "@/components/auth-session-repair"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
+        <AuthSessionRepair />
         {children}
       </body>
     </html>

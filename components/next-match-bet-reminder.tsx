@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import { getUserSafe } from "@/lib/supabase/auth-session"
 import {
   findNextUpcomingMatchWithoutBet,
   type NextMatchBetReminderMatch,
@@ -39,9 +40,7 @@ export function NextMatchBetReminder() {
 
     async function run() {
       const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { user } = await getUserSafe(supabase)
       if (!user || cancelled) return
 
       const matchSelect =

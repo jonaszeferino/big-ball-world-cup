@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { getUserSafe } from "@/lib/supabase/auth-session"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,20 +29,20 @@ export default function GroupsPage() {
 
   const load = useCallback(async () => {
     const supabase = createClient()
-    const [{ data: authData }, { data }] = await Promise.all([
-      supabase.auth.getUser(),
+    const [{ user }, { data }] = await Promise.all([
+      getUserSafe(supabase),
       supabase
         .from("bet_groups")
         .select("id, created_at, name, observations, is_deleted")
         .eq("is_deleted", false)
         .order("name", { ascending: true }),
     ])
-    setUserId(authData.user?.id ?? null)
-    if (authData.user) {
+    setUserId(user?.id ?? null)
+    if (user) {
       const { data: prof, error: profErr } = await supabase
         .from("profiles")
         .select("bet_group_id")
-        .eq("id", authData.user.id)
+        .eq("id", user.id)
         .single()
       if (!profErr && prof?.bet_group_id != null && String(prof.bet_group_id) !== "") {
         setMyBetGroupId(String(prof.bet_group_id))

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { getUserSafe } from "@/lib/supabase/auth-session"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
@@ -62,7 +63,7 @@ export default function RankingPage() {
   useEffect(() => {
     async function loadRanking() {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const { user } = await getUserSafe(supabase)
       if (user) setCurrentUserId(user.id)
 
       const [profilesRes, finishedRes, groupsRes] = await Promise.all([

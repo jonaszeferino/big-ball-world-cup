@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState, useCallback, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { getUserSafe } from "@/lib/supabase/auth-session"
 import { matchStageToMatchesTab } from "@/lib/next-match-bet-reminder"
 import { MatchCard } from "@/components/match-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -129,7 +130,7 @@ function MatchesPageContent() {
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user } = await getUserSafe(supabase)
     if (!user) return
     setUserId(user.id)
 

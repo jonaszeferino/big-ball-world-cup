@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Trophy, BarChart3, Gamepad2, Shield, LogOut, BookOpen, Users, Target } from "lucide-react"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
+import { isAppAdminEmail } from "@/lib/app-admin"
 
 interface Profile {
   id: string
@@ -19,11 +20,13 @@ export function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [isAppAdmin, setIsAppAdmin] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
     async function loadProfile() {
       const { user } = await getUserSafe(supabase)
+      setIsAppAdmin(isAppAdminEmail(user?.email))
       if (user) {
         const { data } = await supabase.from("profiles").select("id, display_name, is_admin").eq("id", user.id).single()
         if (data) setProfile(data)
@@ -42,11 +45,15 @@ export function Navbar() {
     { href: "/matches", label: "Partidas", icon: Gamepad2 },
     { href: "/ranking", label: "Ranking", icon: BarChart3 },
     { href: "/scorers", label: "Artilheiros", icon: Target },
-    { href: "/groups", label: "Grupos", icon: Users },
     { href: "/rules", label: "Regras", icon: BookOpen },
   ] as const
 
-  const adminLinks = profile?.is_admin ? ([{ href: "/admin", label: "Admin", icon: Shield }] as const) : []
+  const adminLinks = isAppAdmin
+    ? ([
+        { href: "/groups", label: "Grupos", icon: Users },
+        { href: "/admin", label: "Admin", icon: Shield },
+      ] as const)
+    : []
 
   const allLinks = [...navLinks, ...adminLinks]
 

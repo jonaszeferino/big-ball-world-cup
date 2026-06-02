@@ -23,6 +23,7 @@ export function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/matches') ||
     request.nextUrl.pathname.startsWith('/ranking') ||
     request.nextUrl.pathname.startsWith('/scorers') ||
+    request.nextUrl.pathname.startsWith('/groups') ||
     request.nextUrl.pathname.startsWith('/admin')
 
   if (isProtected && !user) {

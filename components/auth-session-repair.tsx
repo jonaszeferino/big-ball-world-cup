@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { clearAuthSession, isInvalidRefreshTokenError } from "@/lib/supabase/auth-session"
 
-const PROTECTED_PREFIXES = ["/matches", "/ranking", "/scorers", "/admin"]
+const PROTECTED_PREFIXES = ["/matches", "/ranking", "/scorers", "/groups", "/admin"]
 
 function isProtectedPath(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))

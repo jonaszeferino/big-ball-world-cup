@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { getUserSafe } from "@/lib/supabase/auth-session"
+import { isAppAdminEmail } from "@/lib/app-admin"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2 } from "lucide-react"
@@ -24,7 +25,7 @@ export default function AdminPage() {
       const { user } = await getUserSafe(supabase)
       if (!user) { router.push("/auth/login"); return }
 
-      if (user.email !== "jonaszeferino@gmail.com") {
+      if (!isAppAdminEmail(user.email)) {
         router.push("/matches")
         return
       }

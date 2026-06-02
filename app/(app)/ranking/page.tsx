@@ -52,19 +52,23 @@ export default function RankingPage() {
   const [players, setPlayers] = useState<RankedPlayer[]>([])
   const [groups, setGroups] = useState<BetGroupOption[]>([])
   const [rankingScope, setRankingScope] = useState<string>(RANKING_SCOPE_GERAL)
+  const [myBetGroupId, setMyBetGroupId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const q = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("grupo") : null
-    if (q && /^\d+$/.test(q)) setRankingScope(q)
-  }, [])
 
   useEffect(() => {
     async function loadRanking() {
       const supabase = createClient()
       const { user } = await getUserSafe(supabase)
       if (user) setCurrentUserId(user.id)
+
+      let userBetGroupId: string | null = null
+      if (user) {
+        const { data: prof } = await supabase.from("profiles").select("bet_group_id").eq("id", user.id).single()
+        const raw = prof?.bet_group_id
+        if (raw != null && String(raw) !== "") userBetGroupId = String(raw)
+      }
+      setMyBetGroupId(userBetGroupId)
 
       const [profilesRes, finishedRes, groupsRes] = await Promise.all([
         supabase.from("profiles").select("id, display_name, bet_group_id").order("display_name", { ascending: true }),
@@ -87,6 +91,19 @@ export default function RankingPage() {
         observations: (g.observations as string | null) ?? null,
       }))
       setGroups(groupList)
+
+      const urlGrupo =
+        typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("grupo") : null
+      const wantsGeral = urlGrupo === RANKING_SCOPE_GERAL || urlGrupo === "geral"
+      if (wantsGeral) {
+        setRankingScope(RANKING_SCOPE_GERAL)
+      } else if (urlGrupo && /^\d+$/.test(urlGrupo) && urlGrupo === userBetGroupId) {
+        setRankingScope(urlGrupo)
+      } else if (userBetGroupId) {
+        setRankingScope(userBetGroupId)
+      } else {
+        setRankingScope(RANKING_SCOPE_GERAL)
+      }
 
       if (!profiles?.length) {
         setPlayers([])
@@ -180,6 +197,11 @@ export default function RankingPage() {
     return players.filter((p) => p.bet_group_id === rankingScope).sort(sortPlayers)
   }, [players, rankingScope])
 
+  const myGroup = useMemo(
+    () => (myBetGroupId ? groups.find((g) => g.id === myBetGroupId) ?? null : null),
+    [groups, myBetGroupId],
+  )
+
   const selectedGroup = useMemo(() => {
     if (rankingScope === RANKING_SCOPE_GERAL) return null
     return groups.find((g) => g.id === rankingScope) ?? null
@@ -253,19 +275,19 @@ export default function RankingPage() {
           >
             <div className="flex min-w-0 flex-col gap-2 lg:max-w-md">
               <Label htmlFor="ranking-scope" className="text-muted-foreground">
-                Geral (todos) ou um grupo a que te ligaste na página Grupos (um grupo por conta).
+                {myGroup
+                  ? "Por defeito vês o teu grupo; podes alternar para o ranking geral de todos."
+                  : "Ainda não estás num grupo — vê o ranking geral ou pede ao organizador para te incluir."}
               </Label>
               <Select value={rankingScope} onValueChange={setRankingScope}>
                 <SelectTrigger id="ranking-scope" className="w-full">
                   <SelectValue placeholder="Escolher…" />
                 </SelectTrigger>
                 <SelectContent>
+                  {myGroup ? (
+                    <SelectItem value={myGroup.id}>Grupo: {myGroup.name}</SelectItem>
+                  ) : null}
                   <SelectItem value={RANKING_SCOPE_GERAL}>Ranking geral (todos os jogadores)</SelectItem>
-                  {groups.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      Grupo: {g.name}
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
               {rankingScope !== RANKING_SCOPE_GERAL && selectedGroupName && (
@@ -298,7 +320,7 @@ export default function RankingPage() {
       {scopeEmpty ? (
         <Card className="border-dashed border-border bg-muted/20">
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Nenhum apostador tem este grupo no perfil. Escolhe &quot;Entrar no grupo&quot; em /groups.
+            Nenhum apostador tem este grupo no perfil. O organizador pode atribuir membros na área de grupos.
           </CardContent>
         </Card>
       ) : (

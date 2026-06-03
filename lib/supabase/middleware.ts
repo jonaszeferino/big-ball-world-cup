@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { isAppAdminEmail } from '@/lib/app-admin'
 import { getSupabaseUserFromRequestCookies } from '@/lib/supabase/middleware-cookies'
 
 /**
@@ -29,6 +30,16 @@ export function updateSession(request: NextRequest) {
   if (isProtected && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
+    return NextResponse.redirect(url)
+  }
+
+  const isOrganizerOnly =
+    request.nextUrl.pathname.startsWith('/groups') ||
+    request.nextUrl.pathname.startsWith('/admin')
+
+  if (isOrganizerOnly && user && !isAppAdminEmail(user.email)) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/matches'
     return NextResponse.redirect(url)
   }
 

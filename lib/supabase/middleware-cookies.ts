@@ -77,13 +77,21 @@ function parseStoredAuth(raw: string): StoredAuth | null {
   return null
 }
 
-function jwtSubAndExp(accessToken: string): { sub: string; exp: number } | null {
+function jwtClaims(accessToken: string): { sub: string; exp: number; email?: string } | null {
   try {
     const parts = accessToken.split('.')
     if (parts.length < 2) return null
-    const payload = JSON.parse(base64DecodeUtf8(parts[1])) as { sub?: string; exp?: number }
+    const payload = JSON.parse(base64DecodeUtf8(parts[1])) as {
+      sub?: string
+      exp?: number
+      email?: string
+    }
     if (!payload.sub || typeof payload.exp !== 'number') return null
-    return { sub: payload.sub, exp: payload.exp }
+    return {
+      sub: payload.sub,
+      exp: payload.exp,
+      email: typeof payload.email === 'string' ? payload.email : undefined,
+    }
   } catch {
     return null
   }
@@ -96,7 +104,7 @@ function jwtSubAndExp(accessToken: string): { sub: string; exp: number } | null 
 export function getSupabaseUserFromRequestCookies(
   request: NextRequest,
   supabaseUrl: string,
-): { id: string } | null {
+): { id: string; email?: string } | null {
   const baseKey = supabaseAuthCookieBaseKey(supabaseUrl)
   if (!baseKey) return null
 
@@ -109,9 +117,9 @@ export function getSupabaseUserFromRequestCookies(
   const nowSec = Math.floor(Date.now() / 1000)
 
   if (stored.access_token) {
-    const claims = jwtSubAndExp(stored.access_token)
+    const claims = jwtClaims(stored.access_token)
     if (claims && claims.exp >= nowSec - 90) {
-      return { id: claims.sub }
+      return { id: claims.sub, email: claims.email }
     }
   }
 
@@ -120,8 +128,8 @@ export function getSupabaseUserFromRequestCookies(
   }
 
   if (stored.access_token) {
-    const claims = jwtSubAndExp(stored.access_token)
-    if (claims) return { id: claims.sub }
+    const claims = jwtClaims(stored.access_token)
+    if (claims) return { id: claims.sub, email: claims.email }
   }
 
   return null

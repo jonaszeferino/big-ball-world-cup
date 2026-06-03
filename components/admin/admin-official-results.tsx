@@ -258,6 +258,14 @@ export function AdminOfficialResults() {
       return
     }
     const { homeGoals, awayGoals, homePens, awayPens } = readGoals(match)
+    const saved = savedByCode(resultCode(match))
+    const prevHome = saved
+      ? Math.max(0, Math.floor(Number(saved.goals_home)) || 0)
+      : Math.max(0, Math.floor(Number(match.home_score)) || 0)
+    const prevAway = saved
+      ? Math.max(0, Math.floor(Number(saved.goals_away)) || 0)
+      : Math.max(0, Math.floor(Number(match.away_score)) || 0)
+
     setIsSubmitting(true)
     const supabase = createClient()
 
@@ -289,6 +297,22 @@ export function AdminOfficialResults() {
         setIsSubmitting(false)
         return
       }
+    }
+
+    if (prevHome !== homeGoals || prevAway !== awayGoals) {
+      void fetch("/api/score-banter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          matchId: match.id,
+          prevHome,
+          prevAway,
+          newHome: homeGoals,
+          newAway: awayGoals,
+        }),
+      }).catch(() => {
+        /* toast global depende de Realtime; falha silenciosa no admin */
+      })
     }
 
     await loadMatches()

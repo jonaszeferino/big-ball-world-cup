@@ -9,6 +9,8 @@ export function AppSonner() {
       position="top-center"
       theme="light"
       closeButton
+      richColors
+      style={{ zIndex: 9999 }}
       toastOptions={{
         classNames: {
           toast:

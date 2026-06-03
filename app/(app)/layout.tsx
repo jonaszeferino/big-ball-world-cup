@@ -1,13 +1,11 @@
 import React from "react"
 import { Navbar } from "@/components/navbar"
 import { WorldCupCountdownBanner } from "@/components/world-cup-countdown-banner"
-import { AppSonner } from "@/components/app-sonner"
 import { NextMatchBetReminder } from "@/components/next-match-bet-reminder"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-svh bg-background">
-      <AppSonner />
       <NextMatchBetReminder />
       <Navbar />
       <WorldCupCountdownBanner />

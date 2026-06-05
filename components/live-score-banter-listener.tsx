@@ -66,6 +66,8 @@ export function LiveScoreBanterListener() {
 
     async function bootstrapInbox(uid: string) {
       if (cancelled) return
+      const { user } = await getUserSafe(supabase)
+      if (!user?.id || user.id !== uid) return
       try {
         const res = await fetch("/api/broadcast-toast/inbox?bootstrap=1", { cache: "no-store" })
         if (!res.ok) return
@@ -78,6 +80,8 @@ export function LiveScoreBanterListener() {
 
     async function pollInbox(uid: string) {
       if (cancelled) return
+      const { user } = await getUserSafe(supabase)
+      if (!user?.id || user.id !== uid) return
       try {
         const since = new Date(lastPollAt).toISOString()
         lastPollAt = Date.now()
@@ -125,7 +129,11 @@ export function LiveScoreBanterListener() {
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "match_score_banter" },
           (payload) => {
-            if (userId) showBroadcastToast(userId, payload.new as BroadcastRow)
+            if (!userId) return
+            void getUserSafe(supabase).then(({ user }) => {
+              if (user?.id !== userId) return
+              showBroadcastToast(userId, payload.new as BroadcastRow)
+            })
           },
         )
         .subscribe()

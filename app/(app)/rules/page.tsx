@@ -54,6 +54,26 @@ export default function RulesPage() {
         </div>
 
         <div className="rounded-lg border border-border bg-card p-5 md:col-span-2">
+          <h2 className="text-lg font-semibold text-foreground">Prazo das apostas</h2>
+          <p className="mt-2 text-sm text-foreground/80">
+            Podes criar ou alterar o palpite até o <strong className="font-medium text-foreground">instante exacto do início</strong>{" "}
+            de cada partida. O horário que aparece no cartão do jogo está em{" "}
+            <strong className="font-medium text-foreground">horário de Brasília</strong>.
+          </p>
+          <p className="mt-2 text-sm text-foreground/80">
+            Quando o jogo começa, as apostas fecham automaticamente — não dá para enviar palpite depois do apito.
+          </p>
+          <p className="mt-2 text-sm text-foreground/80">
+            O organizador pode encerrar a partida no bolão antes do apito; nesse caso as apostas também fecham na hora.
+          </p>
+          <p className="mt-2 text-sm text-foreground/80">
+            Com sessão aberta no site, recebes um aviso cerca de{" "}
+            <strong className="font-medium text-foreground">10 minutos antes</strong> de cada jogo para te lembrares de
+            confirmar o palpite.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-border bg-card p-5 md:col-span-2">
           <h2 className="text-lg font-semibold text-foreground">Sem pontos</h2>
           <p className="mt-2 text-sm text-foreground/80">
             Não acertaste placar, nem resultado (7), nem quem passa (5). No mata-mata, empate no palpite sem escolher quem

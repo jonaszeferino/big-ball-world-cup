@@ -1,0 +1,247 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
+import { arePalpitesRevealed, isBeforeMatchKickoff } from "@/lib/match-datetime-brazil"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Loader2, Lock, RefreshCw, ClipboardList } from "lucide-react"
+import { getCountryFlag } from "@/lib/country-flags"
+import { matchStageLabel, type PalpitesApiGroup } from "@/lib/match-bets-board"
+import { cn } from "@/lib/utils"
+
+export default function PalpitesPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [groups, setGroups] = useState<PalpitesApiGroup[]>([])
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  const [filter, setFilter] = useState<"upcoming" | "revealed" | "all">("upcoming")
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    else setRefreshing(true)
+    setError(null)
+
+    try {
+      const res = await fetch("/api/palpites", { cache: "no-store" })
+      const data = (await res.json()) as {
+        groups?: PalpitesApiGroup[]
+        serverNow?: number
+        error?: string
+      }
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          router.push("/auth/login")
+          return
+        }
+        setError(data.error ?? "Erro ao carregar palpites")
+        setGroups([])
+        return
+      }
+
+      setGroups(data.groups ?? [])
+      setNowMs(data.serverNow ?? Date.now())
+    } catch {
+      setError("Erro de rede ao carregar palpites")
+      setGroups([])
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [router])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  useEffect(() => {
+    const tick = setInterval(() => setNowMs(Date.now()), 15_000)
+    const refresh = setInterval(() => void load(true), 60_000)
+    return () => {
+      clearInterval(tick)
+      clearInterval(refresh)
+    }
+  }, [load])
+
+  const visibleGroups = useMemo(() => {
+    const fresh = groups.map((g) => {
+      const bettingOpen = g.match.status === "scheduled" && isBeforeMatchKickoff(g.match.match_date, nowMs)
+      const palpitesRevealed = arePalpitesRevealed(g.match.match_date, nowMs)
+      const betCount = g.betCount
+      const rows = palpitesRevealed ? g.rows : []
+      return { ...g, bettingOpen, palpitesRevealed, betCount, rows }
+    })
+
+    if (filter === "all") return fresh
+    if (filter === "revealed") return fresh.filter((g) => g.palpitesRevealed && g.betCount > 0)
+    return fresh.filter((g) => !g.palpitesRevealed)
+  }, [groups, filter, nowMs])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+            <ClipboardList className="h-7 w-7 text-primary" />
+            Palpites do bolão
+          </h1>
+          <p className="mt-1 text-sm text-foreground/75">
+            Os placares só aparecem <strong className="font-medium text-foreground">depois do apito</strong> (horário de
+            Brasília). Antes disso vês apenas quantos palpites existem — os números não são enviados ao browser.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-2 self-start"
+          disabled={refreshing}
+          onClick={() => void load(true)}
+        >
+          <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+          Atualizar
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={filter === "upcoming" ? "default" : "outline"}
+          onClick={() => setFilter("upcoming")}
+        >
+          Antes do apito
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={filter === "revealed" ? "default" : "outline"}
+          onClick={() => setFilter("revealed")}
+        >
+          Já revelados
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={filter === "all" ? "default" : "outline"}
+          onClick={() => setFilter("all")}
+        >
+          Todas
+        </Button>
+      </div>
+
+      {error ? (
+        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+
+      {visibleGroups.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            {filter === "revealed"
+              ? "Ainda não há palpites revelados. Volta depois do apito de alguma partida."
+              : "Nenhuma partida neste filtro."}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {visibleGroups.map((group) => (
+            <Card key={group.match.id} className="overflow-hidden border-border/80 shadow-sm">
+              <CardHeader className="border-b border-border/50 bg-muted/20 pb-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <CardTitle className="text-base font-semibold">
+                      {group.whenLabel}
+                      <span className="mx-2 text-muted-foreground">·</span>
+                      {group.match.home_team.code} x {group.match.away_team.code}
+                    </CardTitle>
+                    <CardDescription className="mt-1 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1">
+                        <span>{getCountryFlag(group.match.home_team.name)}</span>
+                        {group.match.home_team.name}
+                      </span>
+                      <span className="text-muted-foreground">vs</span>
+                      <span className="inline-flex items-center gap-1">
+                        <span>{getCountryFlag(group.match.away_team.name)}</span>
+                        {group.match.away_team.name}
+                      </span>
+                    </CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Badge variant="outline">{matchStageLabel(group.match.stage)}</Badge>
+                    {group.match.group_name ? (
+                      <Badge variant="secondary">Grupo {group.match.group_name}</Badge>
+                    ) : null}
+                    {group.palpitesRevealed ? (
+                      <Badge className="bg-sky-500/15 text-sky-900 dark:text-sky-100">Palpites revelados</Badge>
+                    ) : group.bettingOpen ? (
+                      <Badge className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-200">Apostas abertas</Badge>
+                    ) : (
+                      <Badge variant="secondary">Aguardando apito</Badge>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {!group.palpitesRevealed ? (
+                  <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                    <Lock className="h-8 w-8 text-muted-foreground/70" />
+                    <p className="text-sm font-medium text-foreground">
+                      {group.betCount === 0
+                        ? "Ninguém apostou nesta partida ainda."
+                        : `${group.betCount} palpite${group.betCount === 1 ? "" : "s"} registrado${group.betCount === 1 ? "" : "s"}`}
+                    </p>
+                    <p className="max-w-sm text-xs text-muted-foreground">
+                      Placares ocultos até {group.whenLabel} (início do jogo, horário de Brasília).
+                    </p>
+                  </div>
+                ) : group.rows.length === 0 ? (
+                  <p className="px-4 py-6 text-sm text-muted-foreground">Ninguém apostou nesta partida.</p>
+                ) : (
+                  <ul className="divide-y divide-border/60">
+                    {group.rows.map((row) => (
+                      <li
+                        key={`${group.match.id}-${row.userId}`}
+                        className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                      >
+                        <span className="font-medium text-foreground">{row.displayName}</span>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="rounded-md bg-primary/10 px-2.5 py-1 font-bold tabular-nums text-primary">
+                            {row.homeScore} x {row.awayScore}
+                          </span>
+                          {row.advancesCode ? (
+                            <span className="text-xs text-muted-foreground">passa: {row.advancesCode}</span>
+                          ) : null}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="border-t border-border/50 bg-muted/10 px-4 py-2 text-xs text-muted-foreground">
+                  {group.palpitesRevealed
+                    ? `${group.betCount} palpite${group.betCount === 1 ? "" : "s"} revelado${group.betCount === 1 ? "" : "s"}`
+                    : group.betCount > 0
+                      ? "Contagem visível — placares só após o apito"
+                      : "Sem palpites"}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

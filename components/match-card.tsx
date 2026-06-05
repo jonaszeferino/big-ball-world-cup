@@ -12,6 +12,11 @@ import { getCountryFlag } from "@/lib/country-flags"
 import { formatMatchDateTimeBrazil, isBeforeMatchKickoff } from "@/lib/match-datetime-brazil"
 import { isGroupStage, isKnockoutEliminationStage } from "@/lib/match-stage"
 import { POINTS_ADVANCE_KNOCKOUT, POINTS_EXACT, POINTS_RESULT } from "@/lib/match-result-scoring"
+import {
+  formatPalpiteScoreDisplay,
+  palpiteScoreForSubmit,
+  parsePalpiteScoreInput,
+} from "@/lib/score-input"
 
 interface Match {
   id: string
@@ -44,8 +49,8 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
-  const [homeScore, setHomeScore] = useState(bet?.predicted_home_score ?? 0)
-  const [awayScore, setAwayScore] = useState(bet?.predicted_away_score ?? 0)
+  const [homeScore, setHomeScore] = useState(() => palpiteScoreForSubmit(bet?.predicted_home_score ?? 0))
+  const [awayScore, setAwayScore] = useState(() => palpiteScoreForSubmit(bet?.predicted_away_score ?? 0))
   const [advancesTeamId, setAdvancesTeamId] = useState<string | null>(bet?.predicted_advances_team_id ?? null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,7 +60,9 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
 
   useEffect(() => {
     setAdvancesTeamId(bet?.predicted_advances_team_id ?? null)
-  }, [bet?.id, bet?.predicted_advances_team_id])
+    setHomeScore(palpiteScoreForSubmit(bet?.predicted_home_score ?? 0))
+    setAwayScore(palpiteScoreForSubmit(bet?.predicted_away_score ?? 0))
+  }, [bet?.id, bet?.predicted_advances_team_id, bet?.predicted_home_score, bet?.predicted_away_score])
 
   useEffect(() => {
     if (!advancesRequired) setAdvancesTeamId(null)
@@ -107,13 +114,16 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
         ? advancesTeamId
         : null
 
+    const home = palpiteScoreForSubmit(homeScore)
+    const away = palpiteScoreForSubmit(awayScore)
+
     try {
       if (hasBet) {
         const { error: updateErr } = await supabase
           .from("bets")
           .update({
-            predicted_home_score: homeScore,
-            predicted_away_score: awayScore,
+            predicted_home_score: home,
+            predicted_away_score: away,
             predicted_advances_team_id: advancesPayload,
           })
           .eq("id", bet.id)
@@ -122,8 +132,8 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
         const { error: insertErr } = await supabase.from("bets").insert({
           user_id: userId,
           match_id: match.id,
-          predicted_home_score: homeScore,
-          predicted_away_score: awayScore,
+          predicted_home_score: home,
+          predicted_away_score: away,
           predicted_advances_team_id: advancesPayload,
         })
         if (insertErr) throw insertErr
@@ -225,12 +235,14 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
                   <Minus className="h-3 w-3" />
                 </Button>
                 <Input
-                  type="number"
-                  min={0}
-                  value={homeScore}
-                  onChange={(e) => setHomeScore(Math.max(0, parseInt(e.target.value) || 0))}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={2}
+                  value={formatPalpiteScoreDisplay(homeScore)}
+                  onChange={(e) => setHomeScore(parsePalpiteScoreInput(e.target.value))}
                   disabled={!canBet}
-                  className="h-8 w-12 text-center text-sm font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none disabled:opacity-50"
+                  className="h-8 w-12 text-center text-sm font-bold disabled:opacity-50"
                 />
                 <Button
                   variant="outline"
@@ -256,12 +268,14 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
                   <Minus className="h-3 w-3" />
                 </Button>
                 <Input
-                  type="number"
-                  min={0}
-                  value={awayScore}
-                  onChange={(e) => setAwayScore(Math.max(0, parseInt(e.target.value) || 0))}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={2}
+                  value={formatPalpiteScoreDisplay(awayScore)}
+                  onChange={(e) => setAwayScore(parsePalpiteScoreInput(e.target.value))}
                   disabled={!canBet}
-                  className="h-8 w-12 text-center text-sm font-bold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none disabled:opacity-50"
+                  className="h-8 w-12 text-center text-sm font-bold disabled:opacity-50"
                 />
                 <Button
                   variant="outline"

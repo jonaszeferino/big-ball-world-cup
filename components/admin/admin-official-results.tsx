@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Check, Loader2, RotateCcw, Save } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { getCountryFlag } from "@/lib/country-flags"
+import { CountryFlag } from "@/components/country-flag"
 import { applyMatchResultAndUpdateBets, reopenMatchAndResetBets, matchesPenaltyColumnsMissingError } from "@/lib/match-result-scoring"
 import {
   getOfficialResultLetters,
@@ -482,12 +482,12 @@ export function AdminOfficialResults() {
                       </div>
                       <div className="flex items-center gap-2 text-sm flex-wrap">
                         <div className="flex items-center gap-1 min-w-0">
-                          <span className="text-lg shrink-0">{getCountryFlag(match.home_team.name)}</span>
+                          <CountryFlag countryName={match.home_team.name} size="md" className="shrink-0" />
                           <span className="font-semibold truncate">{match.home_team.name}</span>
                         </div>
                         <span className="text-muted-foreground">vs</span>
                         <div className="flex items-center gap-1 min-w-0">
-                          <span className="text-lg shrink-0">{getCountryFlag(match.away_team.name)}</span>
+                          <CountryFlag countryName={match.away_team.name} size="md" className="shrink-0" />
                           <span className="font-semibold truncate">{match.away_team.name}</span>
                         </div>
                       </div>
@@ -597,12 +597,12 @@ export function AdminOfficialResults() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-1 flex-col gap-1 text-sm sm:flex-row sm:flex-wrap sm:items-center">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-lg">{getCountryFlag(match.home_team.name)}</span>
+                      <CountryFlag countryName={match.home_team.name} size="md" />
                       <span className="font-semibold">{match.home_team.name}</span>
                       <span className="text-xl font-bold tabular-nums">{match.home_score ?? "—"}</span>
                       <span className="text-muted-foreground">×</span>
                       <span className="text-xl font-bold tabular-nums">{match.away_score ?? "—"}</span>
-                      <span className="text-lg">{getCountryFlag(match.away_team.name)}</span>
+                      <CountryFlag countryName={match.away_team.name} size="md" />
                       <span className="font-semibold">{match.away_team.name}</span>
                       <Badge className="text-xs bg-emerald-500/15 text-emerald-900 dark:text-emerald-100">Encerrada no bolão</Badge>
                     </div>

@@ -9,7 +9,7 @@ import { MatchCard } from "@/components/match-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Trophy, Calendar, Sparkles, ArrowUp, RefreshCw } from "lucide-react"
-import { getCountryFlag } from "@/lib/country-flags"
+import { CountryFlag } from "@/components/country-flag"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -423,12 +423,7 @@ function MatchesPageContent() {
                             </td>
                             <td className="min-w-[6.5rem] px-1.5 py-1.5 sm:min-w-[7.5rem] sm:px-2 sm:py-2">
                               <div className="flex items-center gap-1.5 sm:gap-2">
-                                <span
-                                  className="shrink-0 text-lg leading-none sm:text-xl md:text-2xl"
-                                  title={team.name}
-                                >
-                                  {getCountryFlag(team.name)}
-                                </span>
+                                <CountryFlag countryName={team.name} size="md" title={team.name} />
                                 <span className="whitespace-nowrap font-semibold text-foreground">{team.code}</span>
                               </div>
                             </td>
@@ -548,12 +543,7 @@ function MatchesPageContent() {
                             </td>
                             <td className="min-w-[6.5rem] px-1.5 py-1.5 sm:min-w-[7.5rem] sm:px-2 sm:py-2">
                               <div className="flex items-center gap-1.5 sm:gap-2">
-                                <span
-                                  className="shrink-0 text-lg leading-none sm:text-xl md:text-2xl"
-                                  title={team.name}
-                                >
-                                  {getCountryFlag(team.name)}
-                                </span>
+                                <CountryFlag countryName={team.name} size="md" title={team.name} />
                                 <span className="whitespace-nowrap font-semibold text-foreground">{team.code}</span>
                               </div>
                             </td>

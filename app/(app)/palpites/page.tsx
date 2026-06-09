@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Lock, RefreshCw, ClipboardList } from "lucide-react"
-import { getCountryFlag } from "@/lib/country-flags"
+import { CountryFlag } from "@/components/country-flag"
 import { ProfileNameWithStatus } from "@/components/profile-name-with-status"
 import { matchStageLabel, type PalpitesApiGroup } from "@/lib/match-bets-board"
 import { cn } from "@/lib/utils"
@@ -171,12 +171,12 @@ export default function PalpitesPage() {
                     </CardTitle>
                     <CardDescription className="mt-1 flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center gap-1">
-                        <span>{getCountryFlag(group.match.home_team.name)}</span>
+                        <CountryFlag countryName={group.match.home_team.name} size="sm" />
                         {group.match.home_team.name}
                       </span>
                       <span className="text-muted-foreground">vs</span>
                       <span className="inline-flex items-center gap-1">
-                        <span>{getCountryFlag(group.match.away_team.name)}</span>
+                        <CountryFlag countryName={group.match.away_team.name} size="sm" />
                         {group.match.away_team.name}
                       </span>
                     </CardDescription>

@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Check, Minus, Plus, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getCountryFlag } from "@/lib/country-flags"
+import { CountryFlag } from "@/components/country-flag"
 import { formatMatchDateTimeBrazil, isBeforeMatchKickoff } from "@/lib/match-datetime-brazil"
 import { isGroupStage, isKnockoutEliminationStage } from "@/lib/match-stage"
 import { POINTS_ADVANCE_KNOCKOUT, POINTS_EXACT, POINTS_RESULT } from "@/lib/match-result-scoring"
@@ -186,7 +186,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
 
         <div className="flex items-center justify-between gap-2">
           <div className="flex flex-1 flex-col items-center gap-1 text-center">
-            <span className="text-4xl leading-none sm:text-5xl" title={match.home_team.name}>{getCountryFlag(match.home_team.name)}</span>
+            <CountryFlag countryName={match.home_team.name} size="xl" title={match.home_team.name} />
             <span className="text-xs font-bold uppercase text-muted-foreground">{match.home_team.code}</span>
             <span className="text-sm font-medium text-card-foreground">{match.home_team.name}</span>
           </div>
@@ -215,7 +215,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
           )}
 
           <div className="flex flex-1 flex-col items-center gap-1 text-center">
-            <span className="text-4xl leading-none sm:text-5xl" title={match.away_team.name}>{getCountryFlag(match.away_team.name)}</span>
+            <CountryFlag countryName={match.away_team.name} size="xl" title={match.away_team.name} />
             <span className="text-xs font-bold uppercase text-muted-foreground">{match.away_team.code}</span>
             <span className="text-sm font-medium text-card-foreground">{match.away_team.name}</span>
           </div>
@@ -301,7 +301,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
                     disabled={!canBet}
                     onClick={() => setAdvancesTeamId(match.home_team.id)}
                   >
-                    {getCountryFlag(match.home_team.name)} {match.home_team.code}
+                    <CountryFlag countryName={match.home_team.name} size="sm" /> {match.home_team.code}
                   </Button>
                   <Button
                     type="button"
@@ -311,7 +311,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
                     disabled={!canBet}
                     onClick={() => setAdvancesTeamId(match.away_team.id)}
                   >
-                    {getCountryFlag(match.away_team.name)} {match.away_team.code}
+                    <CountryFlag countryName={match.away_team.name} size="sm" /> {match.away_team.code}
                   </Button>
                 </div>
               </div>

@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Loader2, Target } from "lucide-react"
-import { getCountryFlag } from "@/lib/country-flags"
+import { CountryFlag } from "@/components/country-flag"
 
 interface GoalRow {
   goals: number
@@ -160,9 +160,7 @@ export default function ScorersPage() {
                     <TableCell className="text-center font-semibold text-muted-foreground">{r.rank}</TableCell>
                     <TableCell className="font-medium">{r.scorer_name}</TableCell>
                     <TableCell>
-                      <span className="mr-2" aria-hidden>
-                        {getCountryFlag(r.teamName)}
-                      </span>
+                      <CountryFlag countryName={r.teamName} size="sm" className="mr-2" />
                       <span className="text-muted-foreground">{r.teamName}</span>
                       {r.teamCode ? (
                         <span className="ml-1 text-xs text-muted-foreground">({r.teamCode})</span>

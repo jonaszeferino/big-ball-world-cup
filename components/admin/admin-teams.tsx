@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Trash2 } from "lucide-react"
-import { getCountryFlag } from "@/lib/country-flags"
+import { CountryFlag } from "@/components/country-flag"
 
 interface Team {
   id: string
@@ -56,9 +56,7 @@ function TeamEditRow({
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 p-3 sm:flex-row sm:flex-wrap sm:items-end">
-      <span className="shrink-0 text-2xl leading-none" title={name}>
-        {getCountryFlag(name)}
-      </span>
+      <CountryFlag countryName={name} size="lg" title={name} className="shrink-0" />
       <div className="grid min-w-0 flex-1 gap-1 sm:max-w-[200px]">
         <Label className="text-xs">Nome</Label>
         <Input

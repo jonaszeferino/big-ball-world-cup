@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { getCountryFlag } from "@/lib/country-flags"
+import { CountryFlag } from "@/components/country-flag"
 import type { ResolvedSlot, SimulatedRoundOf32Bracket } from "@/lib/simulated-round-of-32"
 import { cn } from "@/lib/utils"
 
@@ -11,9 +11,7 @@ function SlotLine({ slot }: { slot: ResolvedSlot }) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
         <div className="flex min-w-0 items-center gap-2 font-medium text-foreground">
-          <span className="text-lg leading-none sm:text-xl" title={slot.team.name}>
-            {getCountryFlag(slot.team.name)}
-          </span>
+          <CountryFlag countryName={slot.team.name} size="md" title={slot.team.name} />
           <span className="truncate">{slot.team.code}</span>
         </div>
         <span

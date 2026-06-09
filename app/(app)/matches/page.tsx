@@ -119,6 +119,22 @@ function filterMatchesByBet(
   return list.filter((m) => !betMatchIds.has(m.id))
 }
 
+function filterMatchesByTeam(list: Match[], teamId: string): Match[] {
+  if (teamId === "all") return list
+  return list.filter((m) => m.home_team.id === teamId || m.away_team.id === teamId)
+}
+
+function matchesEmptyMessage(betFilter: "all" | "without_bet", teamFilter: string): string {
+  if (betFilter === "without_bet") {
+    return teamFilter !== "all"
+      ? "Nenhuma partida sem aposta deste time nesta fase"
+      : "Nenhuma partida sem aposta nesta fase"
+  }
+  return teamFilter !== "all"
+    ? "Nenhuma partida deste time nesta fase"
+    : "Nenhuma partida nesta fase ainda"
+}
+
 function MatchesPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -138,6 +154,8 @@ function MatchesPageContent() {
   const [dateOrder, setDateOrder] = useState<"asc" | "desc">("asc")
   /** Filtrar jogos com ou sem aposta do utilizador. */
   const [betFilter, setBetFilter] = useState<"all" | "without_bet">("all")
+  /** Filtrar jogos de um time (casa ou fora). */
+  const [teamFilter, setTeamFilter] = useState("all")
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -289,6 +307,22 @@ function MatchesPageContent() {
   const matchesWithoutBetCount = useMemo(
     () => matches.filter((m) => !betMatchIds.has(m.id)).length,
     [matches, betMatchIds],
+  )
+
+  const teamFilterOptions = useMemo(
+    () =>
+      [...teams].sort((a, b) => {
+        const ga = a.group_name ?? "Z"
+        const gb = b.group_name ?? "Z"
+        if (ga !== gb) {
+          const ia = GROUPS.indexOf(ga)
+          const ib = GROUPS.indexOf(gb)
+          if (ia !== -1 && ib !== -1) return ia - ib
+          return ga.localeCompare(gb)
+        }
+        return a.name.localeCompare(b.name, "pt")
+      }),
+    [teams],
   )
 
   const simulatedRoundOf32 = useMemo(
@@ -679,6 +713,25 @@ function MatchesPageContent() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="filter-team" className="text-xs text-muted-foreground">
+                  Time
+                </Label>
+                <Select value={teamFilter} onValueChange={setTeamFilter}>
+                  <SelectTrigger id="filter-team" className="w-full min-w-[200px] sm:w-[280px]">
+                    <SelectValue placeholder="Todos os times" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os times</SelectItem>
+                    {teamFilterOptions.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.code} — {team.name}
+                        {team.group_name ? ` (Grupo ${team.group_name})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               {activeTab === "group" ? (
                 <>
                   <div className="grid gap-1.5">
@@ -737,7 +790,7 @@ function MatchesPageContent() {
 
             {stages.map((stage) => {
               const rawStageMatches = filterMatchesByBet(
-                matchesForStage(matches, stage.value),
+                filterMatchesByTeam(matchesForStage(matches, stage.value), teamFilter),
                 betMatchIds,
                 betFilter,
               )
@@ -752,11 +805,7 @@ function MatchesPageContent() {
 
               const emptyPhase = (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card py-16 shadow-sm">
-                  <p className="text-muted-foreground">
-                    {betFilter === "without_bet"
-                      ? "Nenhuma partida sem aposta nesta fase"
-                      : "Nenhuma partida nesta fase ainda"}
-                  </p>
+                  <p className="text-muted-foreground">{matchesEmptyMessage(betFilter, teamFilter)}</p>
                 </div>
               )
 

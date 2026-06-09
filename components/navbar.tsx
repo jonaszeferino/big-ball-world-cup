@@ -4,22 +4,16 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { getUserSafe } from "@/lib/supabase/auth-session"
-import { Button } from "@/components/ui/button"
-import { Trophy, BarChart3, Gamepad2, Shield, LogOut, BookOpen, Users, Target, ClipboardList } from "lucide-react"
+import { Trophy, BarChart3, Gamepad2, Shield, BookOpen, Users, Target, ClipboardList } from "lucide-react"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { isAppAdminEmail } from "@/lib/app-admin"
-
-interface Profile {
-  id: string
-  display_name: string
-  is_admin: boolean
-}
+import { NavbarProfileChip, type NavbarProfile } from "@/components/navbar-profile-chip"
 
 export function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<NavbarProfile | null>(null)
   const [isAppAdmin, setIsAppAdmin] = useState(false)
 
   useEffect(() => {
@@ -28,8 +22,23 @@ export function Navbar() {
       const { user } = await getUserSafe(supabase)
       setIsAppAdmin(isAppAdminEmail(user?.email))
       if (user) {
-        const { data } = await supabase.from("profiles").select("id, display_name, is_admin").eq("id", user.id).single()
-        if (data) setProfile(data)
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, display_name, status_message, is_admin")
+          .eq("id", user.id)
+          .single()
+        if (data) {
+          setProfile(data as NavbarProfile)
+        } else if (error?.message.includes("status_message")) {
+          const fallback = await supabase
+            .from("profiles")
+            .select("id, display_name, is_admin")
+            .eq("id", user.id)
+            .single()
+          if (fallback.data) {
+            setProfile({ ...(fallback.data as NavbarProfile), status_message: null })
+          }
+        }
       }
     }
     loadProfile()
@@ -62,8 +71,6 @@ export function Navbar() {
     if (href === "/matches") return pathname === "/matches" || pathname.startsWith("/matches/")
     return pathname.startsWith(href)
   }
-
-  const userInitial = profile?.display_name?.trim().charAt(0).toUpperCase() ?? "?"
 
   return (
     <>
@@ -113,38 +120,12 @@ export function Navbar() {
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {profile && (
-              <div className="hidden items-center gap-2 rounded-full border border-border/50 bg-muted/30 py-1 pl-1 pr-1 shadow-sm backdrop-blur-sm md:flex">
-                <div
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/25 to-primary/5 text-xs font-semibold tabular-nums text-primary ring-1 ring-primary/15"
-                  title={profile.display_name}
-                  aria-hidden
-                >
-                  {userInitial}
-                </div>
-                <span className="max-w-[7.5rem] truncate text-sm font-medium text-foreground">{profile.display_name}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleLogout}
-                  className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
-                  aria-label="Sair"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </div>
+              <NavbarProfileChip
+                profile={profile}
+                onProfileUpdated={setProfile}
+                onLogout={() => void handleLogout()}
+              />
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              className={cn(
-                "h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-                profile && "md:hidden",
-              )}
-              aria-label="Sair"
-            >
-              <LogOut className="h-[18px] w-[18px]" />
-            </Button>
           </div>
         </div>
       </header>

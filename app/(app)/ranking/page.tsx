@@ -17,12 +17,14 @@ import Link from "next/link"
 import { Loader2, Trophy, Medal, Award, Flag, Swords, Users, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { ProfileNameWithStatus } from "@/components/profile-name-with-status"
 import { isGroupStage } from "@/lib/match-stage"
 import { POINTS_ADVANCE_KNOCKOUT, POINTS_EXACT, POINTS_RESULT } from "@/lib/match-result-scoring"
 
 interface RankedPlayer {
   id: string
   display_name: string
+  status_message: string | null
   bet_group_id: string | null
   total_points: number
   group_points: number
@@ -71,7 +73,10 @@ export default function RankingPage() {
       setMyBetGroupId(userBetGroupId)
 
       const [profilesRes, finishedRes, groupsRes] = await Promise.all([
-        supabase.from("profiles").select("id, display_name, bet_group_id").order("display_name", { ascending: true }),
+        supabase
+          .from("profiles")
+          .select("id, display_name, bet_group_id, status_message")
+          .order("display_name", { ascending: true }),
         supabase
           .from("matches")
           .select("id, stage")
@@ -81,7 +86,15 @@ export default function RankingPage() {
         supabase.from("bet_groups").select("id, name, observations").eq("is_deleted", false).order("name", { ascending: true }),
       ])
 
-      const profiles = profilesRes.data
+      let profiles = profilesRes.data
+      if (profilesRes.error?.message.includes("status_message")) {
+        const fallback = await supabase
+          .from("profiles")
+          .select("id, display_name, bet_group_id")
+          .order("display_name", { ascending: true })
+        profiles = (fallback.data ?? []).map((p) => ({ ...p, status_message: null }))
+      }
+
       const finishedMatches = finishedRes.data
       const groupsData = groupsRes.data
 
@@ -173,6 +186,7 @@ export default function RankingPage() {
         return {
           id: p.id,
           display_name: p.display_name,
+          status_message: (p as { status_message?: string | null }).status_message ?? null,
           bet_group_id:
             bgRaw !== undefined && bgRaw !== null && String(bgRaw) !== "" ? String(bgRaw) : null,
           total_points: a.pts,
@@ -337,6 +351,9 @@ export default function RankingPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-lg font-bold text-foreground">{leaderGroup.display_name}</p>
+                    {leaderGroup.status_message?.trim() ? (
+                      <p className="text-xs text-muted-foreground">{leaderGroup.status_message.trim()}</p>
+                    ) : null}
                     <p className="text-2xl font-bold text-primary">{leaderGroup.group_points}</p>
                     <p className="text-xs text-muted-foreground">pontos só em jogos de grupos</p>
                   </CardContent>
@@ -352,6 +369,9 @@ export default function RankingPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-lg font-bold text-foreground">{leaderKo.display_name}</p>
+                    {leaderKo.status_message?.trim() ? (
+                      <p className="text-xs text-muted-foreground">{leaderKo.status_message.trim()}</p>
+                    ) : null}
                     <p className="text-2xl font-bold text-primary">{leaderKo.knockout_points}</p>
                     <p className="text-xs text-muted-foreground">pontos só em jogos eliminatórios</p>
                   </CardContent>
@@ -375,6 +395,11 @@ export default function RankingPage() {
                         <Icon className={cn("h-6 w-6", podium.colorClass)} />
                       </div>
                       <span className="text-lg font-bold text-card-foreground">{player.display_name}</span>
+                      {player.status_message?.trim() ? (
+                        <p className="max-w-full truncate px-2 text-xs text-muted-foreground" title={player.status_message.trim()}>
+                          {player.status_message.trim()}
+                        </p>
+                      ) : null}
                       <span className="text-3xl font-bold text-primary">{player.total_points}</span>
                       <span className="text-xs text-muted-foreground">pontos totais</span>
                       <div className="flex flex-wrap justify-center gap-1">
@@ -435,17 +460,16 @@ export default function RankingPage() {
                         >
                           <td className="py-3 text-left font-medium text-foreground">{i + 1}</td>
                           <td className="py-3 text-left">
-                            <span
-                              className={cn(
-                                "font-medium",
-                                player.id === currentUserId ? "text-primary" : "text-foreground",
-                              )}
-                            >
-                              {player.display_name}
-                              {player.id === currentUserId && (
-                                <span className="ml-1 text-xs text-muted-foreground">(voce)</span>
-                              )}
-                            </span>
+                            <ProfileNameWithStatus
+                              name={player.display_name}
+                              status={player.status_message}
+                              nameClassName={player.id === currentUserId ? "text-primary" : undefined}
+                              suffix={
+                                player.id === currentUserId ? (
+                                  <span className="text-xs font-normal text-muted-foreground">(voce)</span>
+                                ) : undefined
+                              }
+                            />
                           </td>
                           <td className="py-3 text-center text-muted-foreground">{player.settled_bets}</td>
                           <td className="py-3 text-center text-muted-foreground">{player.group_points}</td>

@@ -44,7 +44,7 @@ export async function GET() {
     supabase
       .from("bets")
       .select("match_id, user_id, predicted_home_score, predicted_away_score, predicted_advances_team_id"),
-    supabase.from("profiles").select("id, display_name").order("display_name", { ascending: true }),
+    supabase.from("profiles").select("id, display_name, status_message").order("display_name", { ascending: true }),
   ])
 
   if (matchesRes.error) {
@@ -53,14 +53,27 @@ export async function GET() {
   if (betsRes.error) {
     return NextResponse.json({ error: betsRes.error.message }, { status: 500 })
   }
+
+  let profiles = profilesRes.data ?? []
   if (profilesRes.error) {
-    return NextResponse.json({ error: profilesRes.error.message }, { status: 500 })
+    if (profilesRes.error.message.includes("status_message")) {
+      const fallback = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .order("display_name", { ascending: true })
+      if (fallback.error) {
+        return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+      }
+      profiles = (fallback.data ?? []).map((p) => ({ ...p, status_message: null }))
+    } else {
+      return NextResponse.json({ error: profilesRes.error.message }, { status: 500 })
+    }
   }
 
   const groups = buildBetsBoardGroups(
     (matchesRes.data ?? []) as BetsBoardMatch[],
     (betsRes.data ?? []) as BetsBoardBet[],
-    (profilesRes.data ?? []) as BetsBoardProfile[],
+    profiles as BetsBoardProfile[],
     nowMs,
   )
 

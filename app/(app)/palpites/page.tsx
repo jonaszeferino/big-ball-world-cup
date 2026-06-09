@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Lock, RefreshCw, ClipboardList } from "lucide-react"
 import { getCountryFlag } from "@/lib/country-flags"
+import { ProfileNameWithStatus } from "@/components/profile-name-with-status"
 import { matchStageLabel, type PalpitesApiGroup } from "@/lib/match-bets-board"
 import { cn } from "@/lib/utils"
 
@@ -99,7 +100,7 @@ export default function PalpitesPage() {
           </h1>
           <p className="mt-1 text-sm text-foreground/75">
             Os placares só aparecem <strong className="font-medium text-foreground">depois do apito</strong> (horário de
-            Brasília). Antes disso vês apenas quantos palpites existem — os números não são enviados ao browser.
+            Brasília). Antes disso é possível ver apenas quantos palpites existem — os números não são revelados antes do apito.
           </p>
         </div>
         <Button
@@ -217,7 +218,7 @@ export default function PalpitesPage() {
                         key={`${group.match.id}-${row.userId}`}
                         className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                       >
-                        <span className="font-medium text-foreground">{row.displayName}</span>
+                        <ProfileNameWithStatus name={row.displayName} status={row.statusMessage} />
                         <div className="flex items-center gap-2 text-sm">
                           <span className="rounded-md bg-primary/10 px-2.5 py-1 font-bold tabular-nums text-primary">
                             {row.homeScore} x {row.awayScore}

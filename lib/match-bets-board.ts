@@ -21,11 +21,13 @@ export interface BetsBoardBet {
 export interface BetsBoardProfile {
   id: string
   display_name: string
+  status_message?: string | null
 }
 
 export interface BetsBoardRow {
   userId: string
   displayName: string
+  statusMessage: string | null
   homeScore: number
   awayScore: number
   advancesCode: string | null
@@ -76,7 +78,9 @@ export function buildBetsBoardGroups(
   profiles: BetsBoardProfile[],
   nowMs: number,
 ): BetsBoardGroup[] {
-  const namesById = Object.fromEntries(profiles.map((p) => [p.id, p.display_name]))
+  const profileById = Object.fromEntries(
+    profiles.map((p) => [p.id, { name: p.display_name, status: p.status_message ?? null }]),
+  )
   const betsByMatch = new Map<string, BetsBoardBet[]>()
 
   for (const bet of bets) {
@@ -90,13 +94,17 @@ export function buildBetsBoardGroups(
     .map((match) => {
       const matchBets = betsByMatch.get(match.id) ?? []
       const rows = matchBets
-        .map((bet) => ({
-          userId: bet.user_id,
-          displayName: namesById[bet.user_id] ?? "Apostador",
-          homeScore: bet.predicted_home_score,
-          awayScore: bet.predicted_away_score,
-          advancesCode: advancesCodeForBet(bet, match),
-        }))
+        .map((bet) => {
+          const prof = profileById[bet.user_id]
+          return {
+            userId: bet.user_id,
+            displayName: prof?.name ?? "Apostador",
+            statusMessage: prof?.status ?? null,
+            homeScore: bet.predicted_home_score,
+            awayScore: bet.predicted_away_score,
+            advancesCode: advancesCodeForBet(bet, match),
+          }
+        })
         .sort((a, b) => a.displayName.localeCompare(b.displayName, "pt-BR"))
 
       return {

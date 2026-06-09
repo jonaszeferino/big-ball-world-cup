@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, Lock, RefreshCw, ClipboardList } from "lucide-react"
 import { CountryFlag } from "@/components/country-flag"
 import { ProfileNameWithStatus } from "@/components/profile-name-with-status"
+import { PalpiteRowOddsCompare, SavedOddsSummary } from "@/components/palpite-odds-compare"
+import { hasAnySavedOdds } from "@/lib/palpite-odds-compare"
 import { matchStageLabel, type PalpitesApiGroup } from "@/lib/match-bets-board"
 import { cn } from "@/lib/utils"
 
@@ -74,7 +76,15 @@ export default function PalpitesPage() {
       const palpitesRevealed = arePalpitesRevealed(g.match.match_date, nowMs)
       const betCount = g.betCount
       const rows = palpitesRevealed ? g.rows : []
-      return { ...g, bettingOpen, palpitesRevealed, betCount, rows }
+      return {
+        ...g,
+        bettingOpen,
+        palpitesRevealed,
+        betCount,
+        rows,
+        savedOdds: palpitesRevealed ? g.savedOdds : null,
+        officialResult: palpitesRevealed ? g.officialResult : null,
+      }
     })
 
     if (filter === "all") return fresh
@@ -100,7 +110,7 @@ export default function PalpitesPage() {
           </h1>
           <p className="mt-1 text-sm text-foreground/75">
             Os placares só aparecem <strong className="font-medium text-foreground">depois do apito</strong> (horário de
-            Brasília). Antes disso é possível ver apenas quantos palpites existem — os números não são revelados antes do apito.
+            Brasília). Depois de revelados, vês o palpite de cada um e as últimas odds KTO/Bet365 guardadas para comparar.
           </p>
         </div>
         <Button
@@ -193,6 +203,11 @@ export default function PalpitesPage() {
                     ) : (
                       <Badge variant="secondary">Aguardando apito</Badge>
                     )}
+                    {group.palpitesRevealed && group.officialResult ? (
+                      <Badge className="bg-violet-500/15 text-violet-900 dark:text-violet-100">
+                        Resultado {group.officialResult.homeScore} x {group.officialResult.awayScore}
+                      </Badge>
+                    ) : null}
                   </div>
                 </div>
               </CardHeader>
@@ -212,24 +227,45 @@ export default function PalpitesPage() {
                 ) : group.rows.length === 0 ? (
                   <p className="px-4 py-6 text-sm text-muted-foreground">Ninguém apostou nesta partida.</p>
                 ) : (
-                  <ul className="divide-y divide-border/60">
-                    {group.rows.map((row) => (
-                      <li
-                        key={`${group.match.id}-${row.userId}`}
-                        className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                      >
-                        <ProfileNameWithStatus name={row.displayName} status={row.statusMessage} />
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="rounded-md bg-primary/10 px-2.5 py-1 font-bold tabular-nums text-primary">
-                            {row.homeScore} x {row.awayScore}
-                          </span>
-                          {row.advancesCode ? (
-                            <span className="text-xs text-muted-foreground">passa: {row.advancesCode}</span>
-                          ) : null}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    {hasAnySavedOdds(group.savedOdds) && group.savedOdds ? (
+                      <SavedOddsSummary odds={group.savedOdds} />
+                    ) : null}
+                    <ul className="divide-y divide-border/60">
+                      {group.rows.map((row) => (
+                        <li
+                          key={`${group.match.id}-${row.userId}`}
+                          className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <ProfileNameWithStatus name={row.displayName} status={row.statusMessage} />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="rounded-md bg-primary/10 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
+                                {row.homeScore} x {row.awayScore}
+                              </span>
+                              {row.advancesCode ? (
+                                <span className="text-xs text-muted-foreground">passa: {row.advancesCode}</span>
+                              ) : null}
+                              {row.pointsEarned != null && group.officialResult ? (
+                                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                                  +{row.pointsEarned} pts
+                                </span>
+                              ) : null}
+                            </div>
+                            <PalpiteRowOddsCompare
+                              homeScore={row.homeScore}
+                              awayScore={row.awayScore}
+                              homeCode={group.match.home_team.code}
+                              awayCode={group.match.away_team.code}
+                              odds={group.savedOdds}
+                            />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
                 )}
                 <div className="border-t border-border/50 bg-muted/10 px-4 py-2 text-xs text-muted-foreground">
                   {group.palpitesRevealed

@@ -6,6 +6,8 @@ export interface BetsBoardMatch {
   status: string
   stage: string
   group_name: string | null
+  home_score: number | null
+  away_score: number | null
   home_team: { id: string; code: string; name: string }
   away_team: { id: string; code: string; name: string }
 }
@@ -16,6 +18,24 @@ export interface BetsBoardBet {
   predicted_home_score: number
   predicted_away_score: number
   predicted_advances_team_id: string | null
+  points_earned?: number | null
+}
+
+export interface SavedMatchOdds {
+  ktoHome: string | null
+  ktoDraw: string | null
+  ktoAway: string | null
+  bet365Home: string | null
+  bet365Draw: string | null
+  bet365Away: string | null
+  syncedAt: string | null
+  ktoUrl?: string | null
+  bet365Url?: string | null
+}
+
+export interface OfficialMatchResult {
+  homeScore: number
+  awayScore: number
 }
 
 export interface BetsBoardProfile {
@@ -31,6 +51,7 @@ export interface BetsBoardRow {
   homeScore: number
   awayScore: number
   advancesCode: string | null
+  pointsEarned: number | null
 }
 
 export interface BetsBoardGroup {
@@ -40,6 +61,8 @@ export interface BetsBoardGroup {
   /** Palpites só ficam visíveis a partir do horário de início (apito). */
   palpitesRevealed: boolean
   rows: BetsBoardRow[]
+  savedOdds: SavedMatchOdds | null
+  officialResult: OfficialMatchResult | null
 }
 
 /** Resposta da API /api/palpites — antes do apito não inclui rows com placares. */
@@ -77,6 +100,7 @@ export function buildBetsBoardGroups(
   bets: BetsBoardBet[],
   profiles: BetsBoardProfile[],
   nowMs: number,
+  oddsByMatchId: Map<string, SavedMatchOdds> = new Map(),
 ): BetsBoardGroup[] {
   const profileById = Object.fromEntries(
     profiles.map((p) => [p.id, { name: p.display_name, status: p.status_message ?? null }]),
@@ -103,9 +127,15 @@ export function buildBetsBoardGroups(
             homeScore: bet.predicted_home_score,
             awayScore: bet.predicted_away_score,
             advancesCode: advancesCodeForBet(bet, match),
+            pointsEarned: bet.points_earned ?? null,
           }
         })
         .sort((a, b) => a.displayName.localeCompare(b.displayName, "pt-BR"))
+
+      const officialResult =
+        match.home_score != null && match.away_score != null
+          ? { homeScore: match.home_score, awayScore: match.away_score }
+          : null
 
       return {
         match,
@@ -113,6 +143,8 @@ export function buildBetsBoardGroups(
         bettingOpen: match.status === "scheduled" && isBeforeMatchKickoff(match.match_date, nowMs),
         palpitesRevealed: arePalpitesRevealed(match.match_date, nowMs),
         rows,
+        savedOdds: oddsByMatchId.get(match.id) ?? null,
+        officialResult,
       }
     })
 }

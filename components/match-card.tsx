@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Check, Minus, Plus, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CountryFlag } from "@/components/country-flag"
+import { MatchSavedOddsPanel } from "@/components/match-saved-odds-panel"
 import { formatMatchDateTimeBrazil, isBeforeMatchKickoff } from "@/lib/match-datetime-brazil"
 import { isGroupStage, isKnockoutEliminationStage } from "@/lib/match-stage"
 import { POINTS_ADVANCE_KNOCKOUT, POINTS_EXACT, POINTS_RESULT } from "@/lib/match-result-scoring"
@@ -359,6 +360,8 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
             {getPointsBadge()}
           </div>
         )}
+
+        <MatchSavedOddsPanel matchId={match.id} />
       </CardContent>
     </Card>
   )

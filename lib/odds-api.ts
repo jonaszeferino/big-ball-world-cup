@@ -50,10 +50,17 @@ export async function fetchWorldCupEvents(): Promise<OddsApiEvent[]> {
   return Array.isArray(data) ? data : []
 }
 
-export async function fetchEventOdds(eventId: number): Promise<OddsApiOddsResponse> {
+export type OddsSyncBookmaker = "KTO" | "Bet365" | "both"
+
+export async function fetchEventOdds(
+  eventId: number,
+  bookmakers: OddsSyncBookmaker = "both",
+): Promise<OddsApiOddsResponse> {
+  const param =
+    bookmakers === "both" ? "KTO,Bet365" : bookmakers === "KTO" ? "KTO" : "Bet365"
   return fetchOddsApi<OddsApiOddsResponse>("/odds", {
     eventId: String(eventId),
-    bookmakers: "KTO,Bet365",
+    bookmakers: param,
   })
 }
 

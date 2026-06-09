@@ -6,6 +6,7 @@ import { CountryFlag } from "@/components/country-flag"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatMatchDateTimeBrazilWithYear } from "@/lib/match-datetime-brazil"
+import { Odds1x2Line } from "@/components/odds-1x2-line"
 
 interface PreMatchOddsRow {
   id: string
@@ -50,13 +51,7 @@ function OddsCell({
   }
 
   const content = (
-    <span className="tabular-nums">
-      <span className="font-semibold text-foreground">{home ?? "—"}</span>
-      <span className="text-muted-foreground"> · </span>
-      <span>{draw ?? "—"}</span>
-      <span className="text-muted-foreground"> · </span>
-      <span className="font-semibold text-foreground">{away ?? "—"}</span>
-    </span>
+    <Odds1x2Line home={home} draw={draw} away={away} className="text-sm" />
   )
 
   if (url) {
@@ -128,14 +123,14 @@ export default function OddsPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Odds pré-jogo</h1>
         <p className="text-sm text-muted-foreground">
-          Cotações 1X2 (vitória · empate · vitória) da KTO e Bet365 para a Copa 2026. Dados guardados no bolão — actualizados
+          Cotações 1X2 (casa · empate · fora) da KTO e Bet365 na Copa 2026. Dados salvos no bolão — atualizados
           manualmente pelo admin.
         </p>
         {lastSync ? (
-          <p className="mt-1 text-xs text-muted-foreground">Última actualização: {lastSync}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Última atualização: {lastSync}</p>
         ) : (
           <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-            Ainda não há odds sincronizadas. O admin deve correr a sync no painel.
+            Ainda não há odds sincronizadas. O admin precisa sincronizar no painel.
           </p>
         )}
       </div>

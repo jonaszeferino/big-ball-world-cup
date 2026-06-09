@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { getUserSafe } from "@/lib/supabase/auth-session"
-import { Trophy, BarChart3, Gamepad2, Shield, BookOpen, Users, Target, ClipboardList } from "lucide-react"
+import { Trophy, BarChart3, Gamepad2, Shield, BookOpen, Users, Target, ClipboardList, TrendingUp } from "lucide-react"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { isAppAdminEmail } from "@/lib/app-admin"
@@ -52,6 +52,7 @@ export function Navbar() {
 
   const navLinks = [
     { href: "/matches", label: "Partidas", icon: Gamepad2 },
+    { href: "/odds", label: "Odds", icon: TrendingUp },
     { href: "/palpites", label: "Palpites", icon: ClipboardList },
     { href: "/ranking", label: "Ranking", icon: BarChart3 },
     { href: "/scorers", label: "Artilheiros", icon: Target },

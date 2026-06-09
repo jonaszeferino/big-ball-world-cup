@@ -13,6 +13,7 @@ import { AdminOfficialResults } from "@/components/admin/admin-official-results"
 import { AdminBetGroups } from "@/components/admin/admin-bet-groups"
 import { AdminUpcomingBetsMatrix } from "@/components/admin/admin-upcoming-bets-matrix"
 import { AdminBroadcastToasts } from "@/components/admin/admin-broadcast-toasts"
+import { AdminOddsSync } from "@/components/admin/admin-odds-sync"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
 
 export default function AdminPage() {
@@ -61,6 +62,7 @@ export default function AdminPage() {
           <TabsTrigger value="playoffs">Chaves Playoffs</TabsTrigger>
           <TabsTrigger value="official-results">Resultados Oficiais</TabsTrigger>
           <TabsTrigger value="broadcasts">Avisos</TabsTrigger>
+          <TabsTrigger value="odds">Odds</TabsTrigger>
           <TabsTrigger value="upcoming-bets">Próx. apostas</TabsTrigger>
         </TabsList>
 
@@ -81,6 +83,9 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent value="broadcasts" className="mt-4">
           <AdminBroadcastToasts />
+        </TabsContent>
+        <TabsContent value="odds" className="mt-4">
+          <AdminOddsSync />
         </TabsContent>
         <TabsContent value="upcoming-bets" className="mt-4">
           <AdminUpcomingBetsMatrix />

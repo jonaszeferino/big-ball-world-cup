@@ -22,6 +22,7 @@ export function updateSession(request: NextRequest) {
 
   const isProtected =
     request.nextUrl.pathname.startsWith('/matches') ||
+    request.nextUrl.pathname.startsWith('/odds') ||
     request.nextUrl.pathname.startsWith('/palpites') ||
     request.nextUrl.pathname.startsWith('/ranking') ||
     request.nextUrl.pathname.startsWith('/scorers') ||

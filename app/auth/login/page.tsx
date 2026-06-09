@@ -97,6 +97,14 @@ export default function LoginPage() {
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Entrando..." : "Entrar"}
                   </Button>
+                  <p className="text-center text-sm">
+                    <Link
+                      href="/admin"
+                      className="font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+                    >
+                      Admin
+                    </Link>
+                  </p>
                 </div>
                 <div className="mt-4 text-center text-sm text-muted-foreground">
                   {"Nao tem conta? "}

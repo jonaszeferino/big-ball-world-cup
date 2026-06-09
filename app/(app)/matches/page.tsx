@@ -110,6 +110,15 @@ function sortGroupKeys(keys: string[]): string[] {
   })
 }
 
+function filterMatchesByBet(
+  list: Match[],
+  betMatchIds: Set<string>,
+  filter: "all" | "without_bet",
+): Match[] {
+  if (filter === "all") return list
+  return list.filter((m) => !betMatchIds.has(m.id))
+}
+
 function MatchesPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -127,6 +136,8 @@ function MatchesPageContent() {
   const [groupLayout, setGroupLayout] = useState<"group" | "date">("date")
   /** Ordenação por data do jogo (só aplica em lista por data). */
   const [dateOrder, setDateOrder] = useState<"asc" | "desc">("asc")
+  /** Filtrar jogos com ou sem aposta do utilizador. */
+  const [betFilter, setBetFilter] = useState<"all" | "without_bet">("all")
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -271,6 +282,13 @@ function MatchesPageContent() {
         bets,
       ),
     [matches, bets],
+  )
+
+  const betMatchIds = useMemo(() => new Set(bets.map((b) => b.match_id)), [bets])
+
+  const matchesWithoutBetCount = useMemo(
+    () => matches.filter((m) => !betMatchIds.has(m.id)).length,
+    [matches, betMatchIds],
   )
 
   const simulatedRoundOf32 = useMemo(
@@ -645,6 +663,22 @@ function MatchesPageContent() {
             </TabsList>
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <div className="grid gap-1.5">
+                <Label htmlFor="filter-bet" className="text-xs text-muted-foreground">
+                  Apostas
+                </Label>
+                <Select value={betFilter} onValueChange={(v) => setBetFilter(v as "all" | "without_bet")}>
+                  <SelectTrigger id="filter-bet" className="w-full min-w-[200px] sm:w-[280px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os jogos</SelectItem>
+                    <SelectItem value="without_bet">
+                      Sem aposta ({matchesWithoutBetCount})
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               {activeTab === "group" ? (
                 <>
                   <div className="grid gap-1.5">
@@ -702,7 +736,11 @@ function MatchesPageContent() {
             </div>
 
             {stages.map((stage) => {
-              const rawStageMatches = matchesForStage(matches, stage.value)
+              const rawStageMatches = filterMatchesByBet(
+                matchesForStage(matches, stage.value),
+                betMatchIds,
+                betFilter,
+              )
               const stageList =
                 stage.value === "group" && groupLayout === "group"
                   ? rawStageMatches
@@ -714,7 +752,11 @@ function MatchesPageContent() {
 
               const emptyPhase = (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card py-16 shadow-sm">
-                  <p className="text-muted-foreground">Nenhuma partida nesta fase ainda</p>
+                  <p className="text-muted-foreground">
+                    {betFilter === "without_bet"
+                      ? "Nenhuma partida sem aposta nesta fase"
+                      : "Nenhuma partida nesta fase ainda"}
+                  </p>
                 </div>
               )
 

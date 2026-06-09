@@ -8,7 +8,7 @@ import { AppSonner } from "@/components/app-sonner"
 import { LiveScoreBanterListener } from "@/components/live-score-banter-listener"
 import { MatchKickoffReminderListener } from "@/components/match-kickoff-reminder-listener"
 
-/** Só monta avisos (Sonner + listener) com sessão activa. */
+/** Só monta avisos (Sonner + listeners) dentro do app e com sessão validada. */
 export function BroadcastToastGate() {
   const [userId, setUserId] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
@@ -24,18 +24,29 @@ export function BroadcastToastGate() {
       setReady(true)
     }
 
+    async function applySession() {
+      const { user } = await getUserSafe(supabase)
+      if (cancelled) return
+      if (user?.id) {
+        setUserId(user.id)
+      } else {
+        setUserId(null)
+        toast.dismiss()
+      }
+    }
+
     void syncUser()
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return
-      if (session?.user?.id) {
-        setUserId(session.user.id)
-      } else {
+      if (!session?.user?.id) {
         setUserId(null)
         toast.dismiss()
+        return
       }
+      void applySession()
     })
 
     return () => {

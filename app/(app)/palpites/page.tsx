@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { arePalpitesRevealed, isBeforeMatchKickoff } from "@/lib/match-datetime-brazil"
+import { arePalpitesRevealed, isBeforeMatchKickoff, isDuringMatchScheduleWindow } from "@/lib/match-datetime-brazil"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -84,7 +84,7 @@ export default function PalpitesPage() {
         betCount,
         rows,
         savedOdds: palpitesRevealed ? g.savedOdds : null,
-        partialResult: g.partialResult,
+        partialResult: g.partialResult && isDuringMatchScheduleWindow(g.match.match_date, nowMs) ? g.partialResult : null,
         officialResult: palpitesRevealed ? g.officialResult : null,
       }
     })

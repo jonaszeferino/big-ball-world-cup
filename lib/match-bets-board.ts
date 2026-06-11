@@ -3,6 +3,7 @@ import {
   findTeamsResultForMatch,
   resolveOfficialMatchResult,
   resolvePartialMatchResult,
+  shouldShowPartialResult,
   type PartialMatchResult,
   type TeamsResultRow,
 } from "@/lib/match-partial-result"
@@ -144,7 +145,11 @@ export function buildBetsBoardGroups(
         .sort((a, b) => a.displayName.localeCompare(b.displayName, "pt-BR"))
 
       const teamsResult = findTeamsResultForMatch(match, teamsResults)
-      const partialResult = resolvePartialMatchResult(match, teamsResult)
+      const partialResult = shouldShowPartialResult(
+        match,
+        resolvePartialMatchResult(match, teamsResult),
+        nowMs,
+      )
       const officialResult = resolveOfficialMatchResult(match)
 
       return {

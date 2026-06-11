@@ -1,7 +1,5 @@
--- Impede insert/update de palpites depois do instante de início da partida (match_date em timestamptz).
--- Atualizar só points_earned (admin encerra/reabre partida) continua permitido após o apito.
--- Executar o ficheiro inteiro no SQL Editor (não só uma linha).
--- Se já correu a versão antiga, execute também scripts/021_bets_trigger_allow_points_update.sql
+-- Permite atualizar points_earned (encerramento/reabertura no admin) após o apito.
+-- Bloqueia apenas insert ou alteração de palpite depois de match_date.
 
 create or replace function public.prevent_bet_after_match_start()
 returns trigger

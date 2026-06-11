@@ -1,4 +1,5 @@
 import type { OfficialMatchResult } from "@/lib/match-bets-board"
+import { isDuringMatchScheduleWindow } from "@/lib/match-datetime-brazil"
 
 export interface PartialMatchResult {
   homeScore: number
@@ -21,6 +22,7 @@ type MatchTeams = {
 
 type MatchScores = {
   status: string
+  match_date: string
   home_score: number | null
   away_score: number | null
   home_penalty_score?: number | null
@@ -63,7 +65,17 @@ export function resolvePartialMatchResult(
   return null
 }
 
-export function resolveOfficialMatchResult(match: MatchScores): OfficialMatchResult | null {
+export function shouldShowPartialResult(
+  match: MatchScores,
+  partial: PartialMatchResult | null,
+  nowMs: number,
+): PartialMatchResult | null {
+  if (!partial || match.status === "finished") return null
+  if (!isDuringMatchScheduleWindow(match.match_date, nowMs)) return null
+  return partial
+}
+
+export function resolveOfficialMatchResult(match: Omit<MatchScores, "match_date">): OfficialMatchResult | null {
   if (match.status !== "finished") return null
   if (match.home_score == null || match.away_score == null) return null
   return { homeScore: match.home_score, awayScore: match.away_score }

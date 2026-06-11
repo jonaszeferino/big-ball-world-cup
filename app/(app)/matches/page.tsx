@@ -22,7 +22,7 @@ import {
 import { resolveSimulatedRoundOf32 } from "@/lib/simulated-round-of-32"
 import { SimulatedRoundOf32 } from "@/components/simulated-round-of-32"
 import { Button } from "@/components/ui/button"
-import { findTeamsResultForMatch, resolvePartialMatchResult } from "@/lib/match-partial-result"
+import { findTeamsResultForMatch, resolvePartialMatchResult, shouldShowPartialResult } from "@/lib/match-partial-result"
 
 interface Team {
   id: string
@@ -157,6 +157,12 @@ function MatchesPageContent() {
   const [betFilter, setBetFilter] = useState<"all" | "without_bet">("all")
   /** Filtrar jogos de um time (casa ou fora). */
   const [teamFilter, setTeamFilter] = useState("all")
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  useEffect(() => {
+    const tick = setInterval(() => setNowMs(Date.now()), 15_000)
+    return () => clearInterval(tick)
+  }, [])
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -266,14 +272,18 @@ function MatchesPageContent() {
   )
 
   const partialResultsByMatchId = useMemo(() => {
-    const map = new Map<string, ReturnType<typeof resolvePartialMatchResult>>()
+    const map = new Map<string, ReturnType<typeof shouldShowPartialResult>>()
     for (const match of matches) {
       const teamsResult = findTeamsResultForMatch(match, officialResults)
-      const partial = resolvePartialMatchResult(match, teamsResult)
+      const partial = shouldShowPartialResult(
+        match,
+        resolvePartialMatchResult(match, teamsResult),
+        nowMs,
+      )
       if (partial) map.set(match.id, partial)
     }
     return map
-  }, [matches, officialResults])
+  }, [matches, officialResults, nowMs])
 
   const simulatedStandingsByGroup = useMemo(() => {
     const standingsMap = computeSimulatedGroupStandings(teams, matches, bets)

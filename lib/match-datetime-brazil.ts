@@ -53,6 +53,16 @@ export function arePalpitesRevealed(matchDateIso: string, nowMs: number): boolea
   return nowMs >= kickoff
 }
 
+/** Janela estimada do jogo (90'+intervalo+acréscimos+prorrogação). */
+export const MATCH_PARTIAL_RESULT_WINDOW_MS = 3 * 60 * 60 * 1000
+
+/** Resultado parcial só durante o horário em que o jogo está a decorrer. */
+export function isDuringMatchScheduleWindow(matchDateIso: string, nowMs: number): boolean {
+  const kickoff = parseMatchKickoffMs(matchDateIso)
+  if (kickoff === null) return false
+  return nowMs >= kickoff && nowMs < kickoff + MATCH_PARTIAL_RESULT_WINDOW_MS
+}
+
 export const KICKOFF_REMINDER_MS = 10 * 60 * 1000
 
 /** true nos 10 minutos antes do apito (inclusive), ainda sem o jogo ter começado. */

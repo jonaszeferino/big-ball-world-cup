@@ -22,6 +22,7 @@ import {
 import { resolveSimulatedRoundOf32 } from "@/lib/simulated-round-of-32"
 import { SimulatedRoundOf32 } from "@/components/simulated-round-of-32"
 import { Button } from "@/components/ui/button"
+import { findTeamsResultForMatch, resolvePartialMatchResult } from "@/lib/match-partial-result"
 
 interface Team {
   id: string
@@ -263,6 +264,16 @@ function MatchesPageContent() {
       }, {}),
     [teams],
   )
+
+  const partialResultsByMatchId = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof resolvePartialMatchResult>>()
+    for (const match of matches) {
+      const teamsResult = findTeamsResultForMatch(match, officialResults)
+      const partial = resolvePartialMatchResult(match, teamsResult)
+      if (partial) map.set(match.id, partial)
+    }
+    return map
+  }, [matches, officialResults])
 
   const simulatedStandingsByGroup = useMemo(() => {
     const standingsMap = computeSimulatedGroupStandings(teams, matches, bets)
@@ -830,6 +841,7 @@ function MatchesPageContent() {
                                 bet={bets.find((b) => b.match_id === match.id) || null}
                                 userId={userId!}
                                 onBetPlaced={loadData}
+                                partialResult={partialResultsByMatchId.get(match.id) ?? null}
                               />
                             ))}
                           </div>
@@ -856,6 +868,7 @@ function MatchesPageContent() {
                                   bet={bets.find((b) => b.match_id === match.id) || null}
                                   userId={userId!}
                                   onBetPlaced={loadData}
+                                  partialResult={partialResultsByMatchId.get(match.id) ?? null}
                                 />
                               ))}
                             </div>
@@ -876,6 +889,7 @@ function MatchesPageContent() {
                             bet={bets.find((b) => b.match_id === match.id) || null}
                             userId={userId!}
                             onBetPlaced={loadData}
+                            partialResult={partialResultsByMatchId.get(match.id) ?? null}
                           />
                         ))}
                       </div>
@@ -891,6 +905,7 @@ function MatchesPageContent() {
                             bet={bets.find((b) => b.match_id === match.id) || null}
                             userId={userId!}
                             onBetPlaced={loadData}
+                            partialResult={partialResultsByMatchId.get(match.id) ?? null}
                           />
                         ))}
                       </div>

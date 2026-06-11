@@ -18,6 +18,7 @@ function redactForKickoff(groups: BetsBoardGroup[]): PalpitesApiGroup[] {
         betCount: group.rows.length,
         rows: [],
         savedOdds: null,
+        partialResult: group.partialResult,
         officialResult: null,
       }
     }
@@ -69,9 +70,9 @@ export async function GET() {
 
   const nowMs = Date.now()
   const matchSelect =
-    "id, match_date, status, stage, group_name, home_score, away_score, home_team:home_team_id(id, code, name), away_team:away_team_id(id, code, name)"
+    "id, match_date, status, stage, group_name, home_score, away_score, home_penalty_score, away_penalty_score, home_team:home_team_id(id, code, name), away_team:away_team_id(id, code, name)"
 
-  const [matchesRes, betsRes, profilesRes, oddsRes] = await Promise.all([
+  const [matchesRes, betsRes, profilesRes, oddsRes, teamsResultsRes] = await Promise.all([
     supabase.from("matches").select(matchSelect).order("match_date", { ascending: true }),
     supabase
       .from("bets")
@@ -83,6 +84,7 @@ export async function GET() {
         "match_id, kto_home, kto_draw, kto_away, bet365_home, bet365_draw, bet365_away, synced_at",
       )
       .not("match_id", "is", null),
+    supabase.from("teams_results").select("team_home, team_away, goals_home, goals_away"),
   ])
 
   if (matchesRes.error) {
@@ -119,6 +121,7 @@ export async function GET() {
     profiles as BetsBoardProfile[],
     nowMs,
     oddsByMatchId,
+    teamsResultsRes.error ? [] : (teamsResultsRes.data ?? []),
   )
 
   return NextResponse.json(

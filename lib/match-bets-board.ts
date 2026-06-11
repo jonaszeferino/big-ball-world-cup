@@ -1,4 +1,11 @@
 import { formatMatchDateTimeBrazilWithYear, isBeforeMatchKickoff, arePalpitesRevealed } from "@/lib/match-datetime-brazil"
+import {
+  findTeamsResultForMatch,
+  resolveOfficialMatchResult,
+  resolvePartialMatchResult,
+  type PartialMatchResult,
+  type TeamsResultRow,
+} from "@/lib/match-partial-result"
 
 export interface BetsBoardMatch {
   id: string
@@ -8,6 +15,8 @@ export interface BetsBoardMatch {
   group_name: string | null
   home_score: number | null
   away_score: number | null
+  home_penalty_score?: number | null
+  away_penalty_score?: number | null
   home_team: { id: string; code: string; name: string }
   away_team: { id: string; code: string; name: string }
 }
@@ -62,6 +71,7 @@ export interface BetsBoardGroup {
   palpitesRevealed: boolean
   rows: BetsBoardRow[]
   savedOdds: SavedMatchOdds | null
+  partialResult: PartialMatchResult | null
   officialResult: OfficialMatchResult | null
 }
 
@@ -101,6 +111,7 @@ export function buildBetsBoardGroups(
   profiles: BetsBoardProfile[],
   nowMs: number,
   oddsByMatchId: Map<string, SavedMatchOdds> = new Map(),
+  teamsResults: TeamsResultRow[] = [],
 ): BetsBoardGroup[] {
   const profileById = Object.fromEntries(
     profiles.map((p) => [p.id, { name: p.display_name, status: p.status_message ?? null }]),
@@ -132,10 +143,9 @@ export function buildBetsBoardGroups(
         })
         .sort((a, b) => a.displayName.localeCompare(b.displayName, "pt-BR"))
 
-      const officialResult =
-        match.home_score != null && match.away_score != null
-          ? { homeScore: match.home_score, awayScore: match.away_score }
-          : null
+      const teamsResult = findTeamsResultForMatch(match, teamsResults)
+      const partialResult = resolvePartialMatchResult(match, teamsResult)
+      const officialResult = resolveOfficialMatchResult(match)
 
       return {
         match,
@@ -144,6 +154,7 @@ export function buildBetsBoardGroups(
         palpitesRevealed: arePalpitesRevealed(match.match_date, nowMs),
         rows,
         savedOdds: oddsByMatchId.get(match.id) ?? null,
+        partialResult,
         officialResult,
       }
     })

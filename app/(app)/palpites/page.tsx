@@ -10,6 +10,7 @@ import { Loader2, Lock, RefreshCw, ClipboardList } from "lucide-react"
 import { CountryFlag } from "@/components/country-flag"
 import { ProfileNameWithStatus } from "@/components/profile-name-with-status"
 import { PalpiteRowOddsCompare, SavedOddsSummary } from "@/components/palpite-odds-compare"
+import { MatchPartialResultBanner } from "@/components/match-partial-result-banner"
 import { hasAnySavedOdds } from "@/lib/palpite-odds-compare"
 import { matchStageLabel, type PalpitesApiGroup } from "@/lib/match-bets-board"
 import { cn } from "@/lib/utils"
@@ -83,6 +84,7 @@ export default function PalpitesPage() {
         betCount,
         rows,
         savedOdds: palpitesRevealed ? g.savedOdds : null,
+        partialResult: g.partialResult,
         officialResult: palpitesRevealed ? g.officialResult : null,
       }
     })
@@ -205,12 +207,23 @@ export default function PalpitesPage() {
                     )}
                     {group.palpitesRevealed && group.officialResult ? (
                       <Badge className="bg-violet-500/15 text-violet-900 dark:text-violet-100">
-                        Resultado {group.officialResult.homeScore} x {group.officialResult.awayScore}
+                        Resultado oficial {group.officialResult.homeScore} x {group.officialResult.awayScore}
                       </Badge>
+                    ) : group.partialResult ? (
+                      <Badge className="bg-amber-500/15 text-amber-900 dark:text-amber-100">Resultado parcial</Badge>
                     ) : null}
                   </div>
                 </div>
               </CardHeader>
+              {group.partialResult ? (
+                <div className="border-b border-border/50 px-4 py-3">
+                  <MatchPartialResultBanner
+                    result={group.partialResult}
+                    homeCode={group.match.home_team.code}
+                    awayCode={group.match.away_team.code}
+                  />
+                </div>
+              ) : null}
               <CardContent className="p-0">
                 {!group.palpitesRevealed ? (
                   <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">

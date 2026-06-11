@@ -10,7 +10,9 @@ import { Check, Minus, Plus, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CountryFlag } from "@/components/country-flag"
 import { MatchSavedOddsPanel } from "@/components/match-saved-odds-panel"
+import { MatchPartialResultBanner } from "@/components/match-partial-result-banner"
 import { formatMatchDateTimeBrazil, isBeforeMatchKickoff } from "@/lib/match-datetime-brazil"
+import type { PartialMatchResult } from "@/lib/match-partial-result"
 import { isGroupStage, isKnockoutEliminationStage } from "@/lib/match-stage"
 import { POINTS_ADVANCE_KNOCKOUT, POINTS_EXACT, POINTS_RESULT } from "@/lib/match-result-scoring"
 import {
@@ -47,9 +49,10 @@ interface MatchCardProps {
   bet: Bet | null
   userId: string
   onBetPlaced: () => void
+  partialResult?: PartialMatchResult | null
 }
 
-export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
+export function MatchCard({ match, bet, userId, onBetPlaced, partialResult = null }: MatchCardProps) {
   const [homeScore, setHomeScore] = useState(() => palpiteScoreForSubmit(bet?.predicted_home_score ?? 0))
   const [awayScore, setAwayScore] = useState(() => palpiteScoreForSubmit(bet?.predicted_away_score ?? 0))
   const [advancesTeamId, setAdvancesTeamId] = useState<string | null>(bet?.predicted_advances_team_id ?? null)
@@ -360,6 +363,15 @@ export function MatchCard({ match, bet, userId, onBetPlaced }: MatchCardProps) {
             {getPointsBadge()}
           </div>
         )}
+
+        {partialResult ? (
+          <MatchPartialResultBanner
+            className="mt-3"
+            result={partialResult}
+            homeCode={match.home_team.code}
+            awayCode={match.away_team.code}
+          />
+        ) : null}
 
         <MatchSavedOddsPanel matchId={match.id} />
       </CardContent>

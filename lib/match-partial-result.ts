@@ -78,5 +78,10 @@ export function shouldShowPartialResult(
 export function resolveOfficialMatchResult(match: Omit<MatchScores, "match_date">): OfficialMatchResult | null {
   if (match.status !== "finished") return null
   if (match.home_score == null || match.away_score == null) return null
-  return { homeScore: match.home_score, awayScore: match.away_score }
+  return {
+    homeScore: match.home_score,
+    awayScore: match.away_score,
+    homePenalty: match.home_penalty_score ?? null,
+    awayPenalty: match.away_penalty_score ?? null,
+  }
 }

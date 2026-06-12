@@ -46,6 +46,8 @@ export interface SavedMatchOdds {
 export interface OfficialMatchResult {
   homeScore: number
   awayScore: number
+  homePenalty?: number | null
+  awayPenalty?: number | null
 }
 
 export interface BetsBoardProfile {

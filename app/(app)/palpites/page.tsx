@@ -11,6 +11,7 @@ import { CountryFlag } from "@/components/country-flag"
 import { ProfileNameWithStatus } from "@/components/profile-name-with-status"
 import { PalpiteRowOddsCompare, SavedOddsSummary } from "@/components/palpite-odds-compare"
 import { MatchPartialResultBanner } from "@/components/match-partial-result-banner"
+import { MatchOfficialResultBanner } from "@/components/match-official-result-banner"
 import { hasAnySavedOdds } from "@/lib/palpite-odds-compare"
 import { matchStageLabel, type PalpitesApiGroup } from "@/lib/match-bets-board"
 import { cn } from "@/lib/utils"
@@ -208,24 +209,30 @@ export default function PalpitesPage() {
                     {group.match.group_name ? (
                       <Badge variant="secondary">Grupo {group.match.group_name}</Badge>
                     ) : null}
-                    {group.palpitesRevealed ? (
+                    {group.match.status === "finished" ? (
+                      <Badge className="bg-violet-500/15 text-violet-900 dark:text-violet-100">Encerrada no bolão</Badge>
+                    ) : group.palpitesRevealed ? (
                       <Badge className="bg-sky-500/15 text-sky-900 dark:text-sky-100">Palpites revelados</Badge>
                     ) : group.bettingOpen ? (
                       <Badge className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-200">Apostas abertas</Badge>
                     ) : (
                       <Badge variant="secondary">Aguardando apito</Badge>
                     )}
-                    {group.palpitesRevealed && group.officialResult ? (
-                      <Badge className="bg-violet-500/15 text-violet-900 dark:text-violet-100">
-                        Resultado oficial {group.officialResult.homeScore} x {group.officialResult.awayScore}
-                      </Badge>
-                    ) : group.partialResult ? (
+                    {group.partialResult ? (
                       <Badge className="bg-amber-500/15 text-amber-900 dark:text-amber-100">Resultado parcial</Badge>
                     ) : null}
                   </div>
                 </div>
               </CardHeader>
-              {group.partialResult ? (
+              {group.officialResult && group.match.status === "finished" ? (
+                <div className="border-b border-border/50 px-4 py-3">
+                  <MatchOfficialResultBanner
+                    result={group.officialResult}
+                    homeCode={group.match.home_team.code}
+                    awayCode={group.match.away_team.code}
+                  />
+                </div>
+              ) : group.partialResult ? (
                 <div className="border-b border-border/50 px-4 py-3">
                   <MatchPartialResultBanner
                     result={group.partialResult}

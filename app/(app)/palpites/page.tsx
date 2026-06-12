@@ -90,7 +90,13 @@ export default function PalpitesPage() {
     })
 
     if (filter === "all") return fresh
-    if (filter === "revealed") return fresh.filter((g) => g.palpitesRevealed && g.betCount > 0)
+    if (filter === "revealed") {
+      return fresh
+        .filter((g) => g.palpitesRevealed && g.betCount > 0)
+        .sort(
+          (a, b) => new Date(b.match.match_date).getTime() - new Date(a.match.match_date).getTime(),
+        )
+    }
     return fresh
       .filter((g) => !g.palpitesRevealed)
       .sort(

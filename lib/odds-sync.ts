@@ -14,6 +14,7 @@ const SYNC_DELAY_MS = 120
 interface DbMatch {
   id: string
   match_date: string
+  status: string
   home_team: { name: string }
   away_team: { name: string }
 }
@@ -38,6 +39,7 @@ interface ExistingOddsRow {
 export interface OddsSyncResult {
   bookmaker: OddsSyncBookmaker
   eventsTotal: number
+  eventsSkippedFinished: number
   eventsWithOdds: number
   eventsMissingOdds: number
   upserted: number
@@ -70,6 +72,20 @@ function findMatchId(
     }
   }
   return bestDiff <= 3 * 60 * 60 * 1000 ? best.id : null
+}
+
+function isEventLinkedToFinishedMatch(
+  event: OddsApiEvent,
+  matches: DbMatch[],
+  finishedMatchIds: Set<string>,
+  existing: ExistingOddsRow | null,
+): boolean {
+  if (existing?.match_id && finishedMatchIds.has(existing.match_id)) return true
+
+  const homeApp = oddsApiTeamToAppName(event.home)
+  const awayApp = oddsApiTeamToAppName(event.away)
+  const matchId = findMatchId(matches, homeApp, awayApp, event.date)
+  return matchId != null && finishedMatchIds.has(matchId)
 }
 
 function mergeOddsRow(
@@ -197,7 +213,7 @@ export async function syncPreMatchOdds(
   const [{ data: matchRows }, { data: existingRows }] = await Promise.all([
     supabase
       .from("matches")
-      .select("id, match_date, home_team:home_team_id(name), away_team:away_team_id(name)"),
+      .select("id, match_date, status, home_team:home_team_id(name), away_team:away_team_id(name)"),
     supabase
       .from("match_pre_odds")
       .select(
@@ -206,17 +222,22 @@ export async function syncPreMatchOdds(
   ])
 
   const matches = (matchRows ?? []) as unknown as DbMatch[]
+  const finishedMatchIds = new Set(matches.filter((m) => m.status === "finished").map((m) => m.id))
   const existingByEventId = new Map<number, ExistingOddsRow>(
     (existingRows ?? []).map((r) => [r.odds_api_event_id as number, r as ExistingOddsRow]),
   )
 
   const sortedEvents = sortEventsForSync(events, existingByEventId, bookmaker)
-  const eventsMissingOdds = sortedEvents.filter(
+  const syncableEvents = sortedEvents.filter(
+    (event) => !isEventLinkedToFinishedMatch(event, matches, finishedMatchIds, existingByEventId.get(event.id) ?? null),
+  )
+  const eventsSkippedFinished = sortedEvents.length - syncableEvents.length
+  const eventsMissingOdds = syncableEvents.filter(
     (event) => getSyncPriority(existingByEventId.get(event.id) ?? null, bookmaker) === 0,
   ).length
 
-  for (let i = 0; i < sortedEvents.length; i++) {
-    const event = sortedEvents[i]
+  for (let i = 0; i < syncableEvents.length; i++) {
+    const event = syncableEvents[i]
     try {
       const oddsPayload = await fetchEventOdds(event.id, bookmaker)
       apiCalls++
@@ -258,7 +279,7 @@ export async function syncPreMatchOdds(
       errors.push(`Evento ${event.id}: ${err instanceof Error ? err.message : "erro"}`)
     }
 
-    if (i < sortedEvents.length - 1) await sleep(SYNC_DELAY_MS)
+    if (i < syncableEvents.length - 1) await sleep(SYNC_DELAY_MS)
   }
 
   const bookmakerLabel =
@@ -269,7 +290,7 @@ export async function syncPreMatchOdds(
     .update({
       last_synced_at: new Date().toISOString(),
       last_synced_by: userId,
-      events_total: events.length,
+      events_total: syncableEvents.length,
       events_with_odds: eventsWithOdds,
       last_error: errors.length
         ? `[${bookmakerLabel}] ${errors.slice(0, 5).join(" | ")}`
@@ -279,7 +300,8 @@ export async function syncPreMatchOdds(
 
   return {
     bookmaker,
-    eventsTotal: events.length,
+    eventsTotal: syncableEvents.length,
+    eventsSkippedFinished,
     eventsWithOdds,
     eventsMissingOdds,
     upserted,

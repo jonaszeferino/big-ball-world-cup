@@ -58,6 +58,7 @@ export function AdminOddsSync() {
         ok?: boolean
         bookmaker?: OddsSyncBookmaker
         eventsTotal?: number
+        eventsSkippedFinished?: number
         eventsWithOdds?: number
         eventsMissingOdds?: number
         upserted?: number
@@ -69,8 +70,9 @@ export function AdminOddsSync() {
 
       const label = BOOKMAKER_LABEL[data.bookmaker ?? bookmaker]
       const missing = data.eventsMissingOdds ?? 0
+      const skipped = data.eventsSkippedFinished ?? 0
       setMessage(
-        `${label}: ${data.upserted ?? 0} jogos atualizados (${data.eventsWithOdds ?? 0}/${data.eventsTotal ?? 0} com odds). ${missing} sem odds foram sincronizados primeiro. ~${data.apiCalls ?? "?"} chamadas à API.`,
+        `${label}: ${data.upserted ?? 0} jogos atualizados (${data.eventsWithOdds ?? 0}/${data.eventsTotal ?? 0} com odds). ${missing} sem odds priorizados.${skipped > 0 ? ` ${skipped} encerrada(s) ignorada(s).` : ""} ~${data.apiCalls ?? "?"} chamadas à API.`,
       )
       if (data.errors?.length) {
         setError(`${data.errors.length} aviso(s): ${data.errors.slice(0, 2).join(" · ")}`)
@@ -94,9 +96,9 @@ export function AdminOddsSync() {
       <CardHeader>
         <CardTitle>Odds pré-jogo (odds-api.io)</CardTitle>
         <CardDescription>
-          A API gratuita tem limite diário de chamadas. Jogos ainda sem odds são sincronizados primeiro; os demais vêm
-          depois. Sincronize uma casa por vez para economizar crédito — os dados da outra casa já salvos no banco são
-          preservados.
+          A API gratuita tem limite diário de chamadas. Partidas já encerradas no bolão são ignoradas. Jogos ainda sem
+          odds são sincronizados primeiro; os demais vêm depois. Sincronize uma casa por vez para economizar crédito —
+          os dados da outra casa já salvos no banco são preservados.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -167,9 +169,9 @@ export function AdminOddsSync() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Cada execução usa ~105 chamadas (1 para listar jogos + 1 por partida). Sincronizar só Bet365 ou só KTO consome
-          o mesmo número de chamadas, mas você pode dividir em dias diferentes e preencher uma casa por vez — os dados da
-          outra casa já salvos no banco não são apagados.
+          Cada execução usa 1 chamada para listar jogos + 1 por partida elegível (encerradas no bolão não contam).
+          Sincronizar só Bet365 ou só KTO consome o mesmo número de chamadas por jogo, mas você pode dividir em dias
+          diferentes e preencher uma casa por vez — os dados da outra casa já salvos no banco não são apagados.
         </p>
       </CardContent>
     </Card>

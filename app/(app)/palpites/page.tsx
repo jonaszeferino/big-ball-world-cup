@@ -14,6 +14,11 @@ import { MatchPartialResultBanner } from "@/components/match-partial-result-bann
 import { MatchOfficialResultBanner } from "@/components/match-official-result-banner"
 import { hasAnySavedOdds } from "@/lib/palpite-odds-compare"
 import { matchStageLabel, type PalpitesApiGroup } from "@/lib/match-bets-board"
+import {
+  readPalpitesFilterPref,
+  writePalpitesFilterPref,
+  type PalpitesFilterPref,
+} from "@/lib/palpites-filter-pref"
 import { cn } from "@/lib/utils"
 
 export default function PalpitesPage() {
@@ -23,7 +28,16 @@ export default function PalpitesPage() {
   const [error, setError] = useState<string | null>(null)
   const [groups, setGroups] = useState<PalpitesApiGroup[]>([])
   const [nowMs, setNowMs] = useState(() => Date.now())
-  const [filter, setFilter] = useState<"upcoming" | "revealed" | "all">("upcoming")
+  const [filter, setFilter] = useState<PalpitesFilterPref>("upcoming")
+
+  useEffect(() => {
+    setFilter(readPalpitesFilterPref())
+  }, [])
+
+  const setFilterAndSave = useCallback((next: PalpitesFilterPref) => {
+    setFilter(next)
+    writePalpitesFilterPref(next)
+  }, [])
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -144,7 +158,7 @@ export default function PalpitesPage() {
           type="button"
           size="sm"
           variant={filter === "upcoming" ? "default" : "outline"}
-          onClick={() => setFilter("upcoming")}
+          onClick={() => setFilterAndSave("upcoming")}
         >
           Antes do apito
         </Button>
@@ -152,7 +166,7 @@ export default function PalpitesPage() {
           type="button"
           size="sm"
           variant={filter === "revealed" ? "default" : "outline"}
-          onClick={() => setFilter("revealed")}
+          onClick={() => setFilterAndSave("revealed")}
         >
           Já revelados
         </Button>
@@ -160,7 +174,7 @@ export default function PalpitesPage() {
           type="button"
           size="sm"
           variant={filter === "all" ? "default" : "outline"}
-          onClick={() => setFilter("all")}
+          onClick={() => setFilterAndSave("all")}
         >
           Todas
         </Button>

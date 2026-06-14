@@ -98,6 +98,7 @@ export default function PalpitesPage() {
         bettingOpen,
         palpitesRevealed,
         betCount,
+        myRow: g.myRow ?? null,
         rows,
         savedOdds: palpitesRevealed ? g.savedOdds : null,
         partialResult: g.partialResult && isDuringMatchScheduleWindow(g.match.match_date, nowMs) ? g.partialResult : null,
@@ -140,9 +141,10 @@ export default function PalpitesPage() {
             Palpites feitos
           </h1>
           <p className="mt-1 text-sm text-foreground/75">
-            <strong className="font-medium text-foreground">Só para visualizar</strong> — aqui você vê os palpites de
-            todos depois do apito (horário de Brasília). Para{" "}
-            <strong className="font-medium text-foreground">apostar ou mudar o seu palpite</strong>, use a página{" "}
+            <strong className="font-medium text-foreground">Só para visualizar</strong> — você sempre vê{" "}
+            <strong className="font-medium text-foreground">seu palpite</strong>. Os palpites dos outros só aparecem
+            depois do apito (horário de Brasília). Para{" "}
+            <strong className="font-medium text-foreground">apostar ou mudar o seu</strong>, use{" "}
             <Link href="/matches" className="font-semibold text-primary underline-offset-2 hover:underline">
               Apostar
             </Link>
@@ -266,17 +268,45 @@ export default function PalpitesPage() {
               ) : null}
               <CardContent className="p-0">
                 {!group.palpitesRevealed ? (
-                  <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-                    <Lock className="h-8 w-8 text-muted-foreground/70" />
-                    <p className="text-sm font-medium text-foreground">
-                      {group.betCount === 0
-                        ? "Ninguém apostou nesta partida ainda."
-                        : `${group.betCount} palpite${group.betCount === 1 ? "" : "s"} registrado${group.betCount === 1 ? "" : "s"}`}
-                    </p>
-                    <p className="max-w-sm text-xs text-muted-foreground">
-                      Placares ocultos até {group.whenLabel} (início do jogo, horário de Brasília).
-                    </p>
-                  </div>
+                  <>
+                    {group.myRow ? (
+                      <div className="border-b border-primary/20 bg-primary/5 px-4 py-4">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">Seu palpite</p>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <ProfileNameWithStatus
+                            name={group.myRow.displayName}
+                            status={group.myRow.statusMessage}
+                          />
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="rounded-md bg-primary/15 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
+                              {group.myRow.homeScore} x {group.myRow.awayScore}
+                            </span>
+                            {group.myRow.advancesCode ? (
+                              <span className="text-xs text-muted-foreground">passa: {group.myRow.advancesCode}</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                      <Lock className="h-8 w-8 text-muted-foreground/70" />
+                      <p className="text-sm font-medium text-foreground">
+                        {group.betCount === 0
+                          ? "Ninguém apostou nesta partida ainda."
+                          : group.myRow
+                            ? group.betCount === 1
+                              ? "Só você apostou nesta partida."
+                              : `${group.betCount - 1} outro${group.betCount - 1 === 1 ? "" : "s"} palpite${group.betCount - 1 === 1 ? "" : "s"} registrado${group.betCount - 1 === 1 ? "" : "s"} (oculto${group.betCount - 1 === 1 ? "" : "s"})`
+                            : `${group.betCount} palpite${group.betCount === 1 ? "" : "s"} registrado${group.betCount === 1 ? "" : "s"}`}
+                      </p>
+                      <p className="max-w-sm text-xs text-muted-foreground">
+                        {group.myRow
+                          ? "Palpites dos outros ficam ocultos até"
+                          : "Placares ocultos até"}{" "}
+                        {group.whenLabel} (início do jogo, horário de Brasília).
+                      </p>
+                    </div>
+                  </>
                 ) : group.rows.length === 0 ? (
                   <p className="px-4 py-6 text-sm text-muted-foreground">Ninguém apostou nesta partida.</p>
                 ) : (
@@ -323,9 +353,13 @@ export default function PalpitesPage() {
                 <div className="border-t border-border/50 bg-muted/10 px-4 py-2 text-xs text-muted-foreground">
                   {group.palpitesRevealed
                     ? `${group.betCount} palpite${group.betCount === 1 ? "" : "s"} revelado${group.betCount === 1 ? "" : "s"}`
-                    : group.betCount > 0
-                      ? "Contagem visível — placares só após o apito"
-                      : "Sem palpites"}
+                    : group.myRow
+                      ? group.betCount > 1
+                        ? "Seu palpite visível — dos outros, só após o apito"
+                        : "Seu palpite visível — só você apostou nesta partida"
+                      : group.betCount > 0
+                        ? "Contagem visível — placares só após o apito"
+                        : "Sem palpites"}
                 </div>
               </CardContent>
             </Card>

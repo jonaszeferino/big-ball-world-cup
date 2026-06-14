@@ -78,10 +78,11 @@ export interface BetsBoardGroup {
   officialResult: OfficialMatchResult | null
 }
 
-/** Resposta da API /api/palpites — antes do apito não inclui rows com placares. */
+/** Resposta da API /api/palpites — antes do apito não inclui rows dos outros; myRow é sempre do usuário logado. */
 export type PalpitesApiGroup = Omit<BetsBoardGroup, "rows"> & {
   betCount: number
   rows: BetsBoardRow[]
+  myRow: BetsBoardRow | null
 }
 
 const STAGE_LABELS: Record<string, string> = {

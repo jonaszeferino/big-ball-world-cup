@@ -10,15 +10,16 @@ import {
   type SavedMatchOdds,
 } from "@/lib/match-bets-board"
 
-function redactForKickoff(groups: BetsBoardGroup[]): PalpitesApiGroup[] {
+function redactForKickoff(groups: BetsBoardGroup[], userId: string): PalpitesApiGroup[] {
   return groups.map((group) => {
+    const myRow = group.rows.find((r) => r.userId === userId) ?? null
     if (!group.palpitesRevealed) {
       return {
         ...group,
         betCount: group.rows.length,
         rows: [],
+        myRow,
         savedOdds: null,
-        partialResult: group.partialResult,
         officialResult: null,
       }
     }
@@ -26,6 +27,7 @@ function redactForKickoff(groups: BetsBoardGroup[]): PalpitesApiGroup[] {
       ...group,
       betCount: group.rows.length,
       rows: group.rows,
+      myRow,
     }
   })
 }
@@ -125,7 +127,7 @@ export async function GET() {
   )
 
   return NextResponse.json(
-    { groups: redactForKickoff(groups), serverNow: nowMs },
+    { groups: redactForKickoff(groups, user.id), serverNow: nowMs },
     { headers: { "Cache-Control": "no-store" } },
   )
 }

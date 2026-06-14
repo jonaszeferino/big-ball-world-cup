@@ -9,6 +9,7 @@ import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { isAppAdminEmail } from "@/lib/app-admin"
 import { NavbarProfileChip, type NavbarProfile } from "@/components/navbar-profile-chip"
+import { NavbarChampionBetAlert, NavbarChampionBetAlertMobile } from "@/components/champion-bet-bar"
 
 export function Navbar() {
   const pathname = usePathname()
@@ -119,6 +120,7 @@ export function Navbar() {
           </nav>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <NavbarChampionBetAlert />
             {profile && (
               <NavbarProfileChip
                 profile={profile}
@@ -135,9 +137,11 @@ export function Navbar() {
         aria-hidden={false}
       >
         <nav
-          className="pointer-events-auto flex h-[3.25rem] w-full max-w-md items-stretch justify-between gap-0.5 rounded-2xl border border-border/45 bg-card/85 px-1.5 py-1 shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18),0_0_0_1px_rgba(255,255,255,0.06)_inset] backdrop-blur-xl supports-[backdrop-filter]:bg-card/75"
+          className="pointer-events-auto flex h-auto min-h-[3.25rem] w-full max-w-md flex-col justify-end gap-0.5 rounded-2xl border border-border/45 bg-card/85 px-1.5 py-1 shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18),0_0_0_1px_rgba(255,255,255,0.06)_inset] backdrop-blur-xl supports-[backdrop-filter]:bg-card/75"
           aria-label="Navegação principal"
         >
+          <NavbarChampionBetAlertMobile />
+          <div className="flex h-[3.25rem] items-stretch justify-between gap-0.5">
           {allLinks.map((link) => {
             const Icon = link.icon
             const active = linkActive(link.href)
@@ -162,6 +166,7 @@ export function Navbar() {
               </Link>
             )
           })}
+          </div>
         </nav>
       </div>
     </>

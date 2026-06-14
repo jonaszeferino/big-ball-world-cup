@@ -5,6 +5,7 @@ import {
   requiresPenaltyScores,
   validatePenaltyPair,
 } from "@/lib/match-stage"
+import { applyChampionBetScoringForFinal } from "@/lib/champion-bet-scoring"
 
 /** PostgREST quando as colunas home_penalty_score / away_penalty_score ainda não existem no banco. Rode scripts/005_match_penalties.sql no Supabase. */
 export function matchesPenaltyColumnsMissingError(message: string): boolean {
@@ -242,6 +243,18 @@ export async function applyMatchResultAndUpdateBets(
         .eq("id", userId)
       if (profErr) return { error: profErr.message }
     }
+  }
+
+  if (stage === "final") {
+    const { error: champErr } = await applyChampionBetScoringForFinal(
+      supabase,
+      matchId,
+      homeScore,
+      awayScore,
+      homePen,
+      awayPen,
+    )
+    if (champErr) return { error: champErr }
   }
 
   return { error: null }

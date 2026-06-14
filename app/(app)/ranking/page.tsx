@@ -141,6 +141,17 @@ export default function RankingPage() {
         settledBets = (bets ?? []).filter((b) => finishedIds.has(b.match_id))
       }
 
+      let championPointsByUser = new Map<string, number>()
+      const { data: championBets, error: championErr } = await supabase
+        .from("champion_bets")
+        .select("user_id, points_earned")
+
+      if (!championErr && championBets) {
+        championPointsByUser = new Map(
+          championBets.map((b) => [b.user_id as string, (b.points_earned as number) ?? 0]),
+        )
+      }
+
       const agg = new Map<
         string,
         {
@@ -170,6 +181,13 @@ export default function RankingPage() {
         if (pts === POINTS_EXACT) row.exact += 1
         else if (pts === POINTS_RESULT) row.res += 1
         else if (pts === POINTS_ADVANCE_KNOCKOUT) row.adv += 1
+      }
+
+      for (const [userId, champPts] of championPointsByUser) {
+        const row = agg.get(userId)
+        if (!row || champPts <= 0) continue
+        row.pts += champPts
+        row.koPts += champPts
       }
 
       const playerStats: RankedPlayer[] = profiles.map((p) => {

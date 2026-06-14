@@ -105,19 +105,17 @@ export default function PalpitesPage() {
       }
     })
 
-    if (filter === "all") return fresh
+    const byMatchDateDesc = (a: (typeof fresh)[number], b: (typeof fresh)[number]) =>
+      new Date(b.match.match_date).getTime() - new Date(a.match.match_date).getTime()
+
+    let filtered = fresh
     if (filter === "revealed") {
-      return fresh
-        .filter((g) => g.palpitesRevealed && g.betCount > 0)
-        .sort(
-          (a, b) => new Date(b.match.match_date).getTime() - new Date(a.match.match_date).getTime(),
-        )
+      filtered = fresh.filter((g) => g.palpitesRevealed && g.betCount > 0)
+    } else if (filter === "upcoming") {
+      filtered = fresh.filter((g) => !g.palpitesRevealed)
     }
-    return fresh
-      .filter((g) => !g.palpitesRevealed)
-      .sort(
-        (a, b) => new Date(b.match.match_date).getTime() - new Date(a.match.match_date).getTime(),
-      )
+
+    return filtered.sort(byMatchDateDesc)
   }, [groups, filter, nowMs])
 
   if (loading) {

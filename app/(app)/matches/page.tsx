@@ -12,7 +12,7 @@ import { Loader2, Trophy, Calendar, Sparkles, ArrowUp, RefreshCw } from "lucide-
 import { CountryFlag } from "@/components/country-flag"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   computeSimulatedGroupStandings,
@@ -775,18 +775,18 @@ function MatchesPageContent() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-2 sm:pb-0.5">
-                <Checkbox
-                  id="filter-hide-finished"
-                  checked={hideFinished}
-                  onCheckedChange={(checked) => setHideFinished(checked === true)}
-                />
+              <div className="flex w-full min-w-[200px] items-center justify-between gap-3 sm:w-[280px] sm:pb-0.5">
                 <Label
                   htmlFor="filter-hide-finished"
-                  className="cursor-pointer text-sm font-normal leading-none"
+                  className="cursor-pointer text-sm font-normal"
                 >
                   Ocultar jogos encerrados
                 </Label>
+                <Switch
+                  id="filter-hide-finished"
+                  checked={hideFinished}
+                  onCheckedChange={setHideFinished}
+                />
               </div>
               {activeTab === "group" ? (
                 <>

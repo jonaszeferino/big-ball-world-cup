@@ -12,6 +12,7 @@ import { Loader2, Trophy, Calendar, Sparkles, ArrowUp, RefreshCw } from "lucide-
 import { CountryFlag } from "@/components/country-flag"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   computeSimulatedGroupStandings,
@@ -125,7 +126,26 @@ function filterMatchesByTeam(list: Match[], teamId: string): Match[] {
   return list.filter((m) => m.home_team.id === teamId || m.away_team.id === teamId)
 }
 
-function matchesEmptyMessage(betFilter: "all" | "without_bet", teamFilter: string): string {
+function filterMatchesByFinished(list: Match[], hideFinished: boolean): Match[] {
+  if (!hideFinished) return list
+  return list.filter((m) => m.status !== "finished")
+}
+
+function matchesEmptyMessage(
+  betFilter: "all" | "without_bet",
+  teamFilter: string,
+  hideFinished: boolean,
+): string {
+  if (hideFinished) {
+    if (betFilter === "without_bet") {
+      return teamFilter !== "all"
+        ? "Nenhuma partida em aberto sem aposta deste time nesta fase"
+        : "Nenhuma partida em aberto sem aposta nesta fase"
+    }
+    return teamFilter !== "all"
+      ? "Nenhuma partida em aberto deste time nesta fase"
+      : "Nenhuma partida em aberto nesta fase"
+  }
   if (betFilter === "without_bet") {
     return teamFilter !== "all"
       ? "Nenhuma partida sem aposta deste time nesta fase"
@@ -157,6 +177,8 @@ function MatchesPageContent() {
   const [betFilter, setBetFilter] = useState<"all" | "without_bet">("all")
   /** Filtrar jogos de um time (casa ou fora). */
   const [teamFilter, setTeamFilter] = useState("all")
+  /** Ocultar partidas com status encerrado. */
+  const [hideFinished, setHideFinished] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
 
   useEffect(() => {
@@ -753,6 +775,19 @@ function MatchesPageContent() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex items-center gap-2 sm:pb-0.5">
+                <Checkbox
+                  id="filter-hide-finished"
+                  checked={hideFinished}
+                  onCheckedChange={(checked) => setHideFinished(checked === true)}
+                />
+                <Label
+                  htmlFor="filter-hide-finished"
+                  className="cursor-pointer text-sm font-normal leading-none"
+                >
+                  Ocultar jogos encerrados
+                </Label>
+              </div>
               {activeTab === "group" ? (
                 <>
                   <div className="grid gap-1.5">
@@ -810,10 +845,13 @@ function MatchesPageContent() {
             </div>
 
             {stages.map((stage) => {
-              const rawStageMatches = filterMatchesByBet(
-                filterMatchesByTeam(matchesForStage(matches, stage.value), teamFilter),
-                betMatchIds,
-                betFilter,
+              const rawStageMatches = filterMatchesByFinished(
+                filterMatchesByBet(
+                  filterMatchesByTeam(matchesForStage(matches, stage.value), teamFilter),
+                  betMatchIds,
+                  betFilter,
+                ),
+                hideFinished,
               )
               const stageList =
                 stage.value === "group" && groupLayout === "group"
@@ -826,7 +864,9 @@ function MatchesPageContent() {
 
               const emptyPhase = (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card py-16 shadow-sm">
-                  <p className="text-muted-foreground">{matchesEmptyMessage(betFilter, teamFilter)}</p>
+                  <p className="text-muted-foreground">
+                    {matchesEmptyMessage(betFilter, teamFilter, hideFinished)}
+                  </p>
                 </div>
               )
 

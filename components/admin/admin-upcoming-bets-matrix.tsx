@@ -136,8 +136,8 @@ export function AdminUpcomingBetsMatrix() {
             das partidas no separador Partidas.
           </p>
         ) : (
-          <div className="rounded-md border">
-            <Table>
+          <div className="-mx-1 overflow-x-auto rounded-md border sm:mx-0">
+            <Table className="min-w-max">
               <TableHeader>
                 <TableRow>
                   <TableHead className="sticky left-0 z-10 min-w-[140px] bg-background font-semibold">

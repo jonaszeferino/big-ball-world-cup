@@ -231,11 +231,11 @@ export function MatchGoalScorersInline({
         </ul>
       )}
 
-      <form onSubmit={handleAdd} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-        <div className="space-y-1">
+      <form onSubmit={handleAdd} className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="w-full space-y-1 sm:w-auto">
           <Label className="text-[10px] text-muted-foreground">Time</Label>
           <Select value={side} onValueChange={(v) => setSide(v as "home" | "away")}>
-            <SelectTrigger className="h-9 w-[140px] text-xs">
+            <SelectTrigger className="h-9 w-full text-xs sm:w-[140px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -244,7 +244,7 @@ export function MatchGoalScorersInline({
             </SelectContent>
           </Select>
         </div>
-        <div className="min-w-[140px] flex-1 space-y-1">
+        <div className="w-full min-w-0 flex-1 space-y-1 sm:min-w-[140px]">
           <Label htmlFor={`scorer-${matchId}`} className="text-[10px] text-muted-foreground">
             Nome do jogador
           </Label>
@@ -273,7 +273,7 @@ export function MatchGoalScorersInline({
         <Button
           type="submit"
           size="sm"
-          className="h-9 gap-1"
+          className="h-9 w-full gap-1 sm:w-auto"
           disabled={disabled || busy || !withinLimits || !scorerName.trim()}
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}

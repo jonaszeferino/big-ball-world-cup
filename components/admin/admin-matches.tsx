@@ -150,13 +150,13 @@ function RegisteredMatchRow({
           />
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
+      <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
         {bolaoEncerrado && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="gap-1.5"
+            className="w-full gap-1.5 sm:w-auto"
             disabled={disabled}
             onClick={() => onRequestReopenBolao(match)}
           >
@@ -167,6 +167,7 @@ function RegisteredMatchRow({
         <Button
           type="button"
           size="sm"
+          className="w-full sm:w-auto"
           disabled={disabled || !dateValue}
           onClick={() => void onSaveDate(match.id, dateValue)}
         >
@@ -176,7 +177,7 @@ function RegisteredMatchRow({
           type="button"
           variant="ghost"
           size="icon"
-          className="h-9 w-9 text-muted-foreground hover:text-destructive"
+          className="h-9 w-9 self-end text-muted-foreground hover:text-destructive sm:self-auto"
           disabled={disabled}
           onClick={() => onDelete(match.id)}
         >

@@ -539,19 +539,25 @@ export function AdminOfficialResults() {
                         )}
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                         <Button
                           type="button"
                           variant="secondary"
                           size="sm"
-                          className="gap-2"
+                          className="w-full gap-2 sm:w-auto"
                           disabled={isSubmitting}
                           onClick={() => void handleSaveOfficialOnly(match)}
                         >
                           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                           Salvar resultado
                         </Button>
-                        <Button type="button" size="sm" className="gap-2" disabled={isSubmitting} onClick={() => void handleCloseBolao(match)}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full gap-2 sm:w-auto"
+                          disabled={isSubmitting}
+                          onClick={() => void handleCloseBolao(match)}
+                        >
                           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                           Encerrar partida no bolão
                         </Button>
@@ -621,7 +627,7 @@ export function AdminOfficialResults() {
                     variant="outline"
                     size="sm"
                     disabled={isSubmitting}
-                    className="gap-2 shrink-0"
+                    className="w-full gap-2 sm:w-auto sm:shrink-0"
                     onClick={() => setReopenTarget(match)}
                   >
                     <RotateCcw className="h-4 w-4" />

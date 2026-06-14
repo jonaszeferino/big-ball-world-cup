@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { getUserSafe } from "@/lib/supabase/auth-session"
 import { isAppAdminEmail } from "@/lib/app-admin"
 import { useRouter } from "next/navigation"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { Loader2 } from "lucide-react"
 import { AdminTeams } from "@/components/admin/admin-teams"
 import { AdminMatches } from "@/components/admin/admin-matches"
@@ -14,18 +14,24 @@ import { AdminBetGroups } from "@/components/admin/admin-bet-groups"
 import { AdminUpcomingBetsMatrix } from "@/components/admin/admin-upcoming-bets-matrix"
 import { AdminBroadcastToasts } from "@/components/admin/admin-broadcast-toasts"
 import { AdminOddsSync } from "@/components/admin/admin-odds-sync"
+import { AdminTabsNav } from "@/components/admin/admin-tabs-nav"
+import type { AdminTabValue } from "@/components/admin/admin-tab-items"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
 
 export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState<AdminTabValue>("teams")
   const router = useRouter()
 
   useEffect(() => {
     async function checkAdmin() {
       const supabase = createClient()
       const { user } = await getUserSafe(supabase)
-      if (!user) { router.push("/auth/login"); return }
+      if (!user) {
+        router.push("/auth/login")
+        return
+      }
 
       if (!isAppAdminEmail(user.email)) {
         router.push("/matches")
@@ -46,48 +52,39 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Painel Admin</h1>
+        <h1 className="text-xl font-bold text-foreground sm:text-2xl">Painel Admin</h1>
         <p className="text-sm text-muted-foreground">
-          Gerencie selecoes, partidas, grupos de apostas e resultados do bolao
+          Gerencie seleções, partidas, grupos de apostas e resultados do bolão
         </p>
       </div>
 
-      <Tabs defaultValue="teams">
-        <TabsList>
-          <TabsTrigger value="teams">Selecoes</TabsTrigger>
-          <TabsTrigger value="matches">Partidas</TabsTrigger>
-          <TabsTrigger value="bet-groups">Grupos</TabsTrigger>
-          <TabsTrigger value="playoffs">Chaves Playoffs</TabsTrigger>
-          <TabsTrigger value="official-results">Resultados Oficiais</TabsTrigger>
-          <TabsTrigger value="broadcasts">Avisos</TabsTrigger>
-          <TabsTrigger value="odds">Odds</TabsTrigger>
-          <TabsTrigger value="upcoming-bets">Próx. apostas</TabsTrigger>
-        </TabsList>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as AdminTabValue)} className="min-w-0">
+        <AdminTabsNav value={tab} onValueChange={setTab} />
 
-        <TabsContent value="teams" className="mt-4">
+        <TabsContent value="teams" className="mt-4 min-w-0">
           <AdminTeams />
         </TabsContent>
-        <TabsContent value="matches" className="mt-4">
+        <TabsContent value="matches" className="mt-4 min-w-0">
           <AdminMatches />
         </TabsContent>
-        <TabsContent value="bet-groups" className="mt-4">
+        <TabsContent value="bet-groups" className="mt-4 min-w-0">
           <AdminBetGroups />
         </TabsContent>
-        <TabsContent value="playoffs" className="mt-4">
+        <TabsContent value="playoffs" className="mt-4 min-w-0 overflow-x-auto">
           <PlayoffBrackets />
         </TabsContent>
-        <TabsContent value="official-results" className="mt-4">
+        <TabsContent value="official-results" className="mt-4 min-w-0">
           <AdminOfficialResults />
         </TabsContent>
-        <TabsContent value="broadcasts" className="mt-4">
+        <TabsContent value="broadcasts" className="mt-4 min-w-0">
           <AdminBroadcastToasts />
         </TabsContent>
-        <TabsContent value="odds" className="mt-4">
+        <TabsContent value="odds" className="mt-4 min-w-0">
           <AdminOddsSync />
         </TabsContent>
-        <TabsContent value="upcoming-bets" className="mt-4">
+        <TabsContent value="upcoming-bets" className="mt-4 min-w-0">
           <AdminUpcomingBetsMatrix />
         </TabsContent>
       </Tabs>

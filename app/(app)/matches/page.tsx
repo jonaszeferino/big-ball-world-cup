@@ -24,6 +24,10 @@ import { resolveSimulatedRoundOf32 } from "@/lib/simulated-round-of-32"
 import { SimulatedRoundOf32 } from "@/components/simulated-round-of-32"
 import { Button } from "@/components/ui/button"
 import { findTeamsResultForMatch, resolvePartialMatchResult, shouldShowPartialResult } from "@/lib/match-partial-result"
+import {
+  readMatchesHideFinishedPref,
+  writeMatchesHideFinishedPref,
+} from "@/lib/matches-hide-finished-pref"
 
 interface Team {
   id: string
@@ -180,6 +184,10 @@ function MatchesPageContent() {
   /** Ocultar partidas com status encerrado. */
   const [hideFinished, setHideFinished] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
+
+  useEffect(() => {
+    setHideFinished(readMatchesHideFinishedPref())
+  }, [])
 
   useEffect(() => {
     const tick = setInterval(() => setNowMs(Date.now()), 15_000)
@@ -785,7 +793,10 @@ function MatchesPageContent() {
                 <Switch
                   id="filter-hide-finished"
                   checked={hideFinished}
-                  onCheckedChange={setHideFinished}
+                  onCheckedChange={(checked) => {
+                    setHideFinished(checked)
+                    writeMatchesHideFinishedPref(checked)
+                  }}
                 />
               </div>
               {activeTab === "group" ? (

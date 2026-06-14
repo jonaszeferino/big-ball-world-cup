@@ -13,8 +13,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { MatchScoreInputRow } from "@/components/admin/match-score-input-row"
 import { Badge } from "@/components/ui/badge"
 import { Check, Loader2, RotateCcw, Save } from "lucide-react"
 import { format } from "date-fns"
@@ -493,48 +493,31 @@ export function AdminOfficialResults() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                      <div className="flex flex-col gap-1.5">
+                    <div className="flex w-full flex-col gap-3 lg:max-w-md lg:shrink-0">
+                      <div className="flex w-full flex-col gap-1.5">
                         <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Tempo regular</span>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            min={0}
-                            value={s.home_goals}
-                            onChange={(e) => updateResult(match.id, "home_goals", parseInt(e.target.value, 10) || 0)}
-                            placeholder="0"
-                            className="h-10 w-16 text-center text-lg font-bold"
-                          />
-                          <span className="text-muted-foreground">x</span>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={s.away_goals}
-                            onChange={(e) => updateResult(match.id, "away_goals", parseInt(e.target.value, 10) || 0)}
-                            placeholder="0"
-                            className="h-10 w-16 text-center text-lg font-bold"
-                          />
-                        </div>
+                        <MatchScoreInputRow
+                          homeCode={match.home_team.code}
+                          awayCode={match.away_team.code}
+                          homeScore={s.home_goals}
+                          awayScore={s.away_goals}
+                          onHomeChange={(value) => updateResult(match.id, "home_goals", value)}
+                          onAwayChange={(value) => updateResult(match.id, "away_goals", value)}
+                        />
                         {showPens && (
-                          <div className="flex flex-col gap-1 pt-1">
-                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Penáltis (vencedor)</span>
-                            <div className="flex items-center gap-1">
-                              <Input
-                                type="number"
-                                min={0}
-                                value={s.home_pens ?? 0}
-                                onChange={(e) => updateResult(match.id, "home_pens", parseInt(e.target.value, 10) || 0)}
-                                className="h-9 w-14 text-center text-sm font-semibold"
-                              />
-                              <span className="text-muted-foreground text-sm">x</span>
-                              <Input
-                                type="number"
-                                min={0}
-                                value={s.away_pens ?? 0}
-                                onChange={(e) => updateResult(match.id, "away_pens", parseInt(e.target.value, 10) || 0)}
-                                className="h-9 w-14 text-center text-sm font-semibold"
-                              />
-                            </div>
+                          <div className="flex w-full flex-col gap-1.5 pt-1">
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              Penáltis (vencedor)
+                            </span>
+                            <MatchScoreInputRow
+                              size="compact"
+                              homeCode={match.home_team.code}
+                              awayCode={match.away_team.code}
+                              homeScore={s.home_pens ?? 0}
+                              awayScore={s.away_pens ?? 0}
+                              onHomeChange={(value) => updateResult(match.id, "home_pens", value)}
+                              onAwayChange={(value) => updateResult(match.id, "away_pens", value)}
+                            />
                           </div>
                         )}
                       </div>

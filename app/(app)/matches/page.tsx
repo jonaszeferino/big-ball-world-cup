@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useState, useCallback, useMemo } from "react"
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { getUserSafe } from "@/lib/supabase/auth-session"
@@ -706,10 +707,14 @@ function MatchesPageContent() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Partidas</h1>
+        <h1 className="text-2xl font-bold text-foreground">Apostar nas partidas</h1>
         <p className="text-sm text-muted-foreground">
-          Classificacao dos grupos e apostas por fase. Na fase de grupos, escolha entre ver os jogos agrupados por letra ou
-          uma lista única ordenada por data.
+          <strong className="font-medium text-foreground">Faça ou altere seus palpites aqui.</strong> Para só ver o que
+          todo mundo apostou (sem mudar nada), use{" "}
+          <Link href="/palpites" className="font-semibold text-primary underline-offset-2 hover:underline">
+            Palpites feitos
+          </Link>
+          . Na fase de grupos, escolha entre ver os jogos por grupo ou por data.
         </p>
       </div>
 

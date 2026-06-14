@@ -52,8 +52,8 @@ export function Navbar() {
   }
 
   const navLinks = [
-    { href: "/matches", label: "Partidas", icon: Gamepad2 },
-    { href: "/palpites", label: "Palpites", icon: ClipboardList },
+    { href: "/matches", label: "Apostar", icon: Gamepad2, title: "Fazer ou alterar suas apostas" },
+    { href: "/palpites", label: "Palpites feitos", icon: ClipboardList, title: "Só visualizar — não dá para apostar aqui" },
     { href: "/ranking", label: "Ranking", icon: BarChart3 },
     { href: "/scorers", label: "Artilheiros", icon: Target },
     { href: "/rules", label: "Regras", icon: BookOpen },
@@ -104,6 +104,7 @@ export function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
+                    title={"title" in link ? link.title : undefined}
                     className={cn(
                       "flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-all duration-200",
                       active
@@ -149,6 +150,7 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
+                title={"title" in link ? link.title : undefined}
                 className={cn(
                   "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[9px] font-semibold leading-tight tracking-tight transition-all duration-200",
                   active ? "text-primary" : "text-muted-foreground active:scale-95",

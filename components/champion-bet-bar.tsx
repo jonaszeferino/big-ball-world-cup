@@ -135,7 +135,7 @@ export function ChampionBetBar() {
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <span className="inline-flex items-center gap-1.5 font-semibold text-amber-900 dark:text-amber-100">
               <Crown className="h-4 w-4 shrink-0" />
-              Teu palpite do campeão
+              Seu palpite do campeão
             </span>
             <span className="inline-flex items-center gap-1.5 text-foreground">
               <Trophy className="h-3.5 w-3.5 text-amber-600" />
@@ -180,10 +180,10 @@ export function ChampionBetBar() {
           <div>
             <p className="flex items-center gap-2 text-sm font-semibold text-amber-950 dark:text-amber-50">
               <Crown className="h-4 w-4" />
-              {bet ? "Alterar palpite do campeão" : "Falta o teu palpite do campeão"}
+              {bet ? "Alterar palpite do campeão" : "Falta seu palpite do campeão"}
             </p>
             <p className="mt-1 text-xs text-foreground/80">
-              Escolhe campeão e vice-campeão da Copa. Prazo:{" "}
+              Escolha o campeão e o vice-campeão da Copa. Prazo:{" "}
               <strong className="font-medium text-foreground">
                 10 minutos antes do fim da última partida da fase de grupos
               </strong>

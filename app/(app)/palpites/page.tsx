@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { arePalpitesRevealed, isBeforeMatchKickoff, isDuringMatchScheduleWindow } from "@/lib/match-datetime-brazil"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -133,11 +134,16 @@ export default function PalpitesPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
             <ClipboardList className="h-7 w-7 text-primary" />
-            Palpites do bolão
+            Palpites feitos
           </h1>
           <p className="mt-1 text-sm text-foreground/75">
-            Os placares só aparecem <strong className="font-medium text-foreground">depois do apito</strong> (horário de
-            Brasília). Depois de revelados, vês o palpite de cada um e as últimas odds KTO/Bet365 guardadas para comparar.
+            <strong className="font-medium text-foreground">Só para visualizar</strong> — aqui você vê os palpites de
+            todos depois do apito (horário de Brasília). Para{" "}
+            <strong className="font-medium text-foreground">apostar ou mudar o seu palpite</strong>, use a página{" "}
+            <Link href="/matches" className="font-semibold text-primary underline-offset-2 hover:underline">
+              Apostar
+            </Link>
+            .
           </p>
         </div>
         <Button

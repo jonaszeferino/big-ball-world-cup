@@ -286,6 +286,18 @@ export default function PalpitesPage() {
                             ) : null}
                           </div>
                         </div>
+                        {group.bettingOpen ? (
+                          <p className="mt-3 text-xs text-foreground/80">
+                            Deseja modificar o palpite?{" "}
+                            <Link
+                              href={`/matches?aposta=${group.match.id}`}
+                              className="font-semibold text-primary underline-offset-2 hover:underline"
+                            >
+                              Vá até Apostar
+                            </Link>
+                            .
+                          </p>
+                        ) : null}
                       </div>
                     ) : null}
                     <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">

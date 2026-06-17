@@ -30,39 +30,45 @@ export const POINTS_EXACT = 10
 export const POINTS_RESULT = 7
 
 /** Mata-mata — tempo regular + classificado nos empates. */
-export const KO_POINTS_EXACT_WIN = 20
-export const KO_POINTS_WINNER_ONLY = 15
-export const KO_POINTS_EXACT_DRAW_CLASSIFIED = 18
-export const KO_POINTS_EXACT_DRAW_UNCLASSIFIED = 12
-export const KO_POINTS_GENERIC_DRAW_CLASSIFIED = 10
-export const KO_POINTS_GENERIC_DRAW_UNCLASSIFIED = 7
+export const KO_POINTS_EXACT = 20
+export const KO_POINTS_WINNER_WRONG_SCORE = 12
+export const KO_POINTS_EXACT_DRAW_CLASSIFIED = 15
+export const KO_POINTS_GENERIC_DRAW_CLASSIFIED = 8
+export const KO_POINTS_GENERIC_DRAW_NO_CLASS = 3
+export const KO_POINTS_CLASSIFIED_ONLY = 5
 
-/** @deprecated Use KO_POINTS_* no mata-mata. Mantido para compatibilidade em imports antigos. */
+/** @deprecated aliases */
+export const KO_POINTS_EXACT_WIN = KO_POINTS_EXACT
+export const KO_POINTS_WINNER_ONLY = KO_POINTS_CLASSIFIED_ONLY
+export const KO_POINTS_EXACT_DRAW_UNCLASSIFIED = KO_POINTS_GENERIC_DRAW_NO_CLASS
+export const KO_POINTS_GENERIC_DRAW_UNCLASSIFIED = KO_POINTS_GENERIC_DRAW_NO_CLASS
+
+/** @deprecated Use KO_POINTS_* no mata-mata. */
 export const POINTS_ADVANCE_KNOCKOUT = KO_POINTS_GENERIC_DRAW_CLASSIFIED
 
 export const KNOCKOUT_POINT_VALUES = [
-  KO_POINTS_EXACT_WIN,
-  KO_POINTS_WINNER_ONLY,
+  KO_POINTS_EXACT,
+  KO_POINTS_WINNER_WRONG_SCORE,
   KO_POINTS_EXACT_DRAW_CLASSIFIED,
-  KO_POINTS_EXACT_DRAW_UNCLASSIFIED,
   KO_POINTS_GENERIC_DRAW_CLASSIFIED,
-  KO_POINTS_GENERIC_DRAW_UNCLASSIFIED,
+  KO_POINTS_GENERIC_DRAW_NO_CLASS,
+  KO_POINTS_CLASSIFIED_ONLY,
 ] as const
 
 export function knockoutPointsLabel(points: number): string | null {
   switch (points) {
-    case KO_POINTS_EXACT_WIN:
-      return "Placar exato (vitória)"
-    case KO_POINTS_WINNER_ONLY:
-      return "Classificado"
+    case KO_POINTS_EXACT:
+      return "Placar exato"
+    case KO_POINTS_WINNER_WRONG_SCORE:
+      return "Vencedor + placar errado"
     case KO_POINTS_EXACT_DRAW_CLASSIFIED:
       return "Empate exato + classificado"
-    case KO_POINTS_EXACT_DRAW_UNCLASSIFIED:
-      return "Empate exato"
     case KO_POINTS_GENERIC_DRAW_CLASSIFIED:
-      return "Empate + classificado"
-    case KO_POINTS_GENERIC_DRAW_UNCLASSIFIED:
+      return "Empate genérico + classificado"
+    case KO_POINTS_GENERIC_DRAW_NO_CLASS:
       return "Empate genérico"
+    case KO_POINTS_CLASSIFIED_ONLY:
+      return "Apenas classificado"
     default:
       return null
   }
@@ -76,6 +82,17 @@ function predictedWinnerTeamId(
 ): string | null {
   if (predictedHome > predictedAway) return homeTeamId
   if (predictedAway > predictedHome) return awayTeamId
+  return null
+}
+
+function actualWinnerTeamId(
+  actualHome: number,
+  actualAway: number,
+  homeTeamId: string,
+  awayTeamId: string,
+): string | null {
+  if (actualHome > actualAway) return homeTeamId
+  if (actualAway > actualHome) return awayTeamId
   return null
 }
 
@@ -108,16 +125,30 @@ function calculateBetPointsKnockout(
 
   if (exact) {
     if (actualDraw) {
-      return classifiedCorrect ? KO_POINTS_EXACT_DRAW_CLASSIFIED : KO_POINTS_EXACT_DRAW_UNCLASSIFIED
+      return classifiedCorrect ? KO_POINTS_EXACT_DRAW_CLASSIFIED : KO_POINTS_GENERIC_DRAW_NO_CLASS
     }
-    return KO_POINTS_EXACT_WIN
+    return KO_POINTS_EXACT
   }
 
   if (actualDraw && predDraw) {
-    return classifiedCorrect ? KO_POINTS_GENERIC_DRAW_CLASSIFIED : KO_POINTS_GENERIC_DRAW_UNCLASSIFIED
+    return classifiedCorrect ? KO_POINTS_GENERIC_DRAW_CLASSIFIED : KO_POINTS_GENERIC_DRAW_NO_CLASS
+  }
+
+  if (!actualDraw) {
+    const predWinner = predictedWinnerTeamId(
+      predictedHome,
+      predictedAway,
+      ctx.homeTeamId,
+      ctx.awayTeamId,
+    )
+    const actualWinner = actualWinnerTeamId(actualHome, actualAway, ctx.homeTeamId, ctx.awayTeamId)
+    if (predWinner && actualWinner && predWinner === actualWinner) {
+      return KO_POINTS_WINNER_WRONG_SCORE
+    }
   }
 
   if (actualAdv) {
+    if (classifiedCorrect) return KO_POINTS_CLASSIFIED_ONLY
     const predWinner = predictedWinnerTeamId(
       predictedHome,
       predictedAway,
@@ -125,10 +156,7 @@ function calculateBetPointsKnockout(
       ctx.awayTeamId,
     )
     if (predWinner && predWinner === actualAdv) {
-      return KO_POINTS_WINNER_ONLY
-    }
-    if (classifiedCorrect) {
-      return KO_POINTS_WINNER_ONLY
+      return KO_POINTS_CLASSIFIED_ONLY
     }
   }
 

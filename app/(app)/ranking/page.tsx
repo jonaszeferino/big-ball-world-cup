@@ -20,9 +20,8 @@ import { cn } from "@/lib/utils"
 import { ProfileNameWithStatus } from "@/components/profile-name-with-status"
 import { isGroupStage } from "@/lib/match-stage"
 import {
+  KO_POINTS_EXACT,
   KO_POINTS_EXACT_DRAW_CLASSIFIED,
-  KO_POINTS_EXACT_DRAW_UNCLASSIFIED,
-  KO_POINTS_EXACT_WIN,
   POINTS_EXACT,
   POINTS_RESULT,
 } from "@/lib/match-result-scoring"
@@ -188,7 +187,7 @@ export default function RankingPage() {
           if (pts === POINTS_EXACT) row.exact += 1
           else if (pts === POINTS_RESULT) row.res += 1
         } else if (pts > 0) {
-          if (pts === KO_POINTS_EXACT_WIN || pts === KO_POINTS_EXACT_DRAW_CLASSIFIED || pts === KO_POINTS_EXACT_DRAW_UNCLASSIFIED) {
+          if (pts === KO_POINTS_EXACT || pts === KO_POINTS_EXACT_DRAW_CLASSIFIED) {
             row.exact += 1
           } else {
             row.adv += 1
@@ -292,7 +291,7 @@ export default function RankingPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Ranking</h1>
           <p className="text-sm text-muted-foreground">
-            Grupos: +{POINTS_EXACT} exato, +{POINTS_RESULT} resultado. Mata-mata: de +7 a +20 conforme placar e
+            Grupos: +{POINTS_EXACT} exato, +{POINTS_RESULT} resultado. Mata-mata: +20 a +3 conforme placar e
             classificado (ver Regras).
           </p>
         </div>

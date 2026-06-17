@@ -14,7 +14,7 @@ import { MatchPartialResultBanner } from "@/components/match-partial-result-bann
 import { formatMatchDateTimeBrazil, isBeforeMatchKickoff } from "@/lib/match-datetime-brazil"
 import type { PartialMatchResult } from "@/lib/match-partial-result"
 import { isGroupStage, isKnockoutEliminationStage } from "@/lib/match-stage"
-import { POINTS_ADVANCE_KNOCKOUT, POINTS_EXACT, POINTS_RESULT } from "@/lib/match-result-scoring"
+import { POINTS_EXACT, POINTS_RESULT, knockoutPointsLabel } from "@/lib/match-result-scoring"
 import {
   formatPalpiteScoreDisplay,
   palpiteScoreForSubmit,
@@ -106,7 +106,7 @@ export function MatchCard({ match, bet, userId, onBetPlaced, partialResult = nul
     }
 
     if (advancesRequired && !advancesTeamId) {
-      setError("Em caso de empate no mata-mata, indique quem passa à seguinte fase.")
+      setError("Em caso de empate no mata-mata, escolha quem passa de fase.")
       setIsSubmitting(false)
       return
     }
@@ -152,11 +152,20 @@ export function MatchCard({ match, bet, userId, onBetPlaced, partialResult = nul
 
   const getPointsBadge = () => {
     if (!isFinished || !bet) return null
-    const points = bet.points_earned
+    const points = bet.points_earned ?? 0
+    if (points === 0) return <Badge variant="secondary" className="text-muted-foreground">0 pts</Badge>
+
+    if (isKnockoutEliminationStage(match.stage)) {
+      const label = knockoutPointsLabel(points)
+      return (
+        <Badge className="bg-primary text-primary-foreground">
+          +{points} {label ?? "pts"}
+        </Badge>
+      )
+    }
+
     if (points === POINTS_EXACT) return <Badge className="bg-primary text-primary-foreground">+{POINTS_EXACT} Exato!</Badge>
     if (points === POINTS_RESULT) return <Badge className="bg-accent text-accent-foreground">+{POINTS_RESULT} Resultado</Badge>
-    if (points === POINTS_ADVANCE_KNOCKOUT)
-      return <Badge className="bg-secondary text-secondary-foreground">+{POINTS_ADVANCE_KNOCKOUT} Quem passa</Badge>
     return <Badge variant="secondary" className="text-muted-foreground">0 pts</Badge>
   }
 
@@ -295,7 +304,11 @@ export function MatchCard({ match, bet, userId, onBetPlaced, partialResult = nul
 
             {advancesRequired && (
               <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
-                <span className="text-xs font-medium text-foreground">Empate: quem passa à seguinte fase?</span>
+                <span className="text-xs font-medium text-foreground">Empate no mata-mata: quem passa de fase?</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Obrigatório escolher o classificado. Até +18 (empate exato + classificado) ou +10 (empate genérico +
+                  classificado). Vitória exata no 90&apos;: +20.
+                </span>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"

@@ -4,53 +4,93 @@ export default function RulesPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Regras do Bolão</h1>
         <p className="text-sm text-foreground/75">
-          Pontuação por palpite em cada jogo (tempo regular, salvo nota abaixo)
+          Pontuação por palpite em cada jogo (tempo regular de 90 minutos). No mata-mata, empate no 90&apos; exige
+          escolher quem passa (prorrogação ou pênaltis).
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-semibold text-foreground">Placar exato</h2>
-          <p className="mt-2 text-sm text-foreground/80">
-            Acertou os gols da casa e do visitante igual ao resultado oficial do tempo regular (90 minutos).
-          </p>
-          <div className="mt-3 rounded-md border border-primary/35 bg-primary/20 px-3 py-2 text-primary">
-            <span className="text-xl font-bold">+10 pontos</span>
+        <div className="rounded-lg border border-border bg-card p-5 md:col-span-2">
+          <h2 className="text-lg font-semibold text-foreground">Fase de grupos</h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-md border border-primary/35 bg-primary/20 px-3 py-3 text-primary">
+              <p className="text-sm font-medium">Placar exato no 90&apos;</p>
+              <p className="mt-1 text-xl font-bold">+10 pontos</p>
+            </div>
+            <div className="rounded-md border border-primary/35 bg-primary/20 px-3 py-3 text-primary">
+              <p className="text-sm font-medium">Vencedor ou empate (sem placar exato)</p>
+              <p className="mt-1 text-xl font-bold">+7 pontos</p>
+            </div>
           </div>
         </div>
 
-        <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-semibold text-foreground">Vencedor ou empate (sem placar exato)</h2>
+        <div className="rounded-lg border border-border bg-card p-5 md:col-span-2">
+          <h2 className="text-lg font-semibold text-foreground">Mata-mata (16-avos em diante)</h2>
           <p className="mt-2 text-sm text-foreground/80">
-            Acertou se ganha a casa, o visitante ou empate, mas não o placar certo. Vale na fase de grupos e no
-            mata-mata.
+            Se o palpite for <strong className="font-medium text-foreground">empate no 90&apos;</strong>, você precisa
+            escolher o <strong className="font-medium text-foreground">classificado</strong> (time que passa). Conta só
+            uma faixa de pontos por jogo — a que se aplicar ao seu palpite.
           </p>
-          <div className="mt-3 rounded-md border border-primary/35 bg-primary/20 px-3 py-2 text-primary">
-            <span className="text-xl font-bold">+7 pontos</span>
-          </div>
+          <ul className="mt-4 space-y-2 text-sm text-foreground/80">
+            <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/35 bg-primary/20 px-3 py-2 text-primary">
+              <span>Placar exato de vitória no 90&apos;</span>
+              <span className="text-lg font-bold">+20</span>
+            </li>
+            <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-primary">
+              <span>Apenas classificado / vencedor (sem placar exato)</span>
+              <span className="text-lg font-bold">+15</span>
+            </li>
+            <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-secondary-foreground">
+              <span>Placar exato de empate + classificado certo</span>
+              <span className="text-lg font-bold">+18</span>
+            </li>
+            <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted px-3 py-2 text-foreground">
+              <span>Placar exato de empate sem classificado certo</span>
+              <span className="text-lg font-bold">+12</span>
+            </li>
+            <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted px-3 py-2 text-foreground">
+              <span>Empate genérico (errou o placar) + classificado certo</span>
+              <span className="text-lg font-bold">+10</span>
+            </li>
+            <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted px-3 py-2 text-foreground">
+              <span>Empate genérico sem classificado certo</span>
+              <span className="text-lg font-bold">+7</span>
+            </li>
+          </ul>
+          <p className="mt-3 text-sm text-foreground/80">
+            <strong className="font-medium text-foreground">Empate genérico</strong> = você palpitou empate no 90&apos;,
+            mas errou os gols (ex.: palpite 0×0 e saiu 1×1).{" "}
+            <strong className="font-medium text-foreground">Classificado</strong> = time que passa (vitória no 90&apos; ou
+            vencedor nos pênaltis).
+          </p>
         </div>
 
-        <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-semibold text-foreground">Quem passa (só mata-mata)</h2>
-          <p className="mt-2 text-sm text-foreground/80">
-            Nos jogos eliminatórios, se o palpite for empate no 90&apos;, você precisa dizer qual equipe passa (tempo extra ou
-            pênaltis). Se não acertou o resultado nem o empate no 90&apos;, mas acertou a equipe que avança, conta
-            estes pontos — <strong className="font-medium text-foreground">não se somam</strong> com o exato nem com o +7:
-            conta só a melhor regra que se aplicar ao seu palpite.
-          </p>
-          <div className="mt-3 rounded-md border border-border bg-secondary px-3 py-2 text-secondary-foreground">
-            <span className="text-xl font-bold">+5 pontos</span>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-semibold text-foreground">Empate no mata-mata: exato vs quem passa</h2>
-          <p className="mt-2 text-sm text-foreground/80">
-            Se acertar o placar exato do 90&apos; (incluindo empate), recebe <strong className="font-medium text-foreground">+10</strong>{" "}
-            e não recebe mais +5 pela escolha &quot;quem passa&quot; — o exato já cobre o seu palpite. Só quando{" "}
-            <strong className="font-medium text-foreground">não</strong> há +10 nem +7 é que o +5 por acertar quem
-            passa pode contar.
-          </p>
+        <div className="rounded-lg border border-border bg-card p-5 md:col-span-2">
+          <h2 className="text-lg font-semibold text-foreground">Mata-mata: exemplos</h2>
+          <ul className="mt-2 space-y-2 text-sm text-foreground/80">
+            <li>
+              Palpite <strong>2×1</strong>, resultado <strong>2×1</strong> → <strong>+20</strong>
+            </li>
+            <li>
+              Palpite <strong>2×1</strong>, resultado <strong>2×0</strong> → <strong>+15</strong>
+            </li>
+            <li>
+              Palpite <strong>1×1</strong> + classificado certo, resultado <strong>1×1</strong> → <strong>+18</strong>
+            </li>
+            <li>
+              Palpite <strong>1×1</strong> + classificado errado, resultado <strong>1×1</strong> → <strong>+12</strong>
+            </li>
+            <li>
+              Palpite <strong>0×0</strong> + classificado certo, resultado <strong>1×1</strong> → <strong>+10</strong>
+            </li>
+            <li>
+              Palpite <strong>0×0</strong> + classificado errado, resultado <strong>1×1</strong> → <strong>+7</strong>
+            </li>
+            <li>
+              Palpite <strong>2×1</strong>, resultado <strong>1×1</strong> nos pênaltis → <strong>+15</strong> se acertou
+              quem passa
+            </li>
+          </ul>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-5 md:col-span-2">
@@ -71,43 +111,24 @@ export default function RulesPage() {
               <span className="text-lg font-bold">+15 pontos</span>
             </li>
             <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted px-3 py-2 text-foreground">
-              <span>
-                Acertou um time que chegou à final, mas na posição errada (campeão ou vice)
-              </span>
+              <span>Acertou um time que chegou à final, mas na posição errada</span>
               <span className="text-lg font-bold">+10 pontos</span>
             </li>
           </ul>
-          <p className="mt-3 text-sm text-foreground/80">
-            Cada escolha (campeão e vice) pontua de forma independente. Se acertar as duas posições exatas, soma{" "}
-            <strong className="font-medium text-foreground">35 + 15 = 50 pontos</strong>.
-          </p>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-5 md:col-span-2">
           <h2 className="text-lg font-semibold text-foreground">Prazo das apostas</h2>
           <p className="mt-2 text-sm text-foreground/80">
             Você pode criar ou alterar o palpite até o <strong className="font-medium text-foreground">instante exato do início</strong>{" "}
-            de cada partida. O horário que aparece no cartão do jogo está em{" "}
-            <strong className="font-medium text-foreground">horário de Brasília</strong>.
-          </p>
-          <p className="mt-2 text-sm text-foreground/80">
-            Quando o jogo começa, as apostas fecham automaticamente — não dá para enviar palpite depois do apito.
-          </p>
-          <p className="mt-2 text-sm text-foreground/80">
-            O organizador pode encerrar a partida no bolão antes do apito; nesse caso as apostas também fecham na hora.
-          </p>
-          <p className="mt-2 text-sm text-foreground/80">
-            Com sessão aberta no site, você recebe um aviso cerca de{" "}
-            <strong className="font-medium text-foreground">10 minutos antes</strong> de cada jogo para lembrar de
-            confirmar o palpite.
+            de cada partida (horário de Brasília). Depois do apito, as apostas fecham.
           </p>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-5 md:col-span-2">
           <h2 className="text-lg font-semibold text-foreground">Sem pontos</h2>
           <p className="mt-2 text-sm text-foreground/80">
-            Não acertou placar, nem resultado (7), nem quem passa (5). No mata-mata, empate no palpite sem escolher quem
-            passa não pontua.
+            Errou tudo ou, no mata-mata, palpitou empate sem escolher quem passa.
           </p>
           <div className="mt-3 rounded-md border border-border bg-muted px-3 py-2 text-foreground">
             <span className="text-xl font-bold">0 pontos</span>

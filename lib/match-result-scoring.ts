@@ -25,12 +25,115 @@ export type BetPointsContext = {
   predictedAdvancesTeamId: string | null
 }
 
-/** Placar exato (tempo regular). */
+/** Fase de grupos (tempo regular). */
 export const POINTS_EXACT = 10
-/** Vencedor ou empate no tempo regular, sem placar exato. */
 export const POINTS_RESULT = 7
-/** Mata-mata: acertou quem passa quando o placar/resultado no 90' não valeria 7 ou 10. */
-export const POINTS_ADVANCE_KNOCKOUT = 5
+
+/** Mata-mata — tempo regular + classificado nos empates. */
+export const KO_POINTS_EXACT_WIN = 20
+export const KO_POINTS_WINNER_ONLY = 15
+export const KO_POINTS_EXACT_DRAW_CLASSIFIED = 18
+export const KO_POINTS_EXACT_DRAW_UNCLASSIFIED = 12
+export const KO_POINTS_GENERIC_DRAW_CLASSIFIED = 10
+export const KO_POINTS_GENERIC_DRAW_UNCLASSIFIED = 7
+
+/** @deprecated Use KO_POINTS_* no mata-mata. Mantido para compatibilidade em imports antigos. */
+export const POINTS_ADVANCE_KNOCKOUT = KO_POINTS_GENERIC_DRAW_CLASSIFIED
+
+export const KNOCKOUT_POINT_VALUES = [
+  KO_POINTS_EXACT_WIN,
+  KO_POINTS_WINNER_ONLY,
+  KO_POINTS_EXACT_DRAW_CLASSIFIED,
+  KO_POINTS_EXACT_DRAW_UNCLASSIFIED,
+  KO_POINTS_GENERIC_DRAW_CLASSIFIED,
+  KO_POINTS_GENERIC_DRAW_UNCLASSIFIED,
+] as const
+
+export function knockoutPointsLabel(points: number): string | null {
+  switch (points) {
+    case KO_POINTS_EXACT_WIN:
+      return "Placar exato (vitória)"
+    case KO_POINTS_WINNER_ONLY:
+      return "Classificado"
+    case KO_POINTS_EXACT_DRAW_CLASSIFIED:
+      return "Empate exato + classificado"
+    case KO_POINTS_EXACT_DRAW_UNCLASSIFIED:
+      return "Empate exato"
+    case KO_POINTS_GENERIC_DRAW_CLASSIFIED:
+      return "Empate + classificado"
+    case KO_POINTS_GENERIC_DRAW_UNCLASSIFIED:
+      return "Empate genérico"
+    default:
+      return null
+  }
+}
+
+function predictedWinnerTeamId(
+  predictedHome: number,
+  predictedAway: number,
+  homeTeamId: string,
+  awayTeamId: string,
+): string | null {
+  if (predictedHome > predictedAway) return homeTeamId
+  if (predictedAway > predictedHome) return awayTeamId
+  return null
+}
+
+function calculateBetPointsKnockout(
+  actualHome: number,
+  actualAway: number,
+  predictedHome: number,
+  predictedAway: number,
+  ctx: BetPointsContext,
+): number {
+  const predDraw = predictedHome === predictedAway
+  const actualDraw = actualHome === actualAway
+  const exact = predictedHome === actualHome && predictedAway === actualAway
+
+  if (predDraw && !ctx.predictedAdvancesTeamId) {
+    return 0
+  }
+
+  const actualAdv = resolveAdvancingTeamId(
+    actualHome,
+    actualAway,
+    ctx.homeTeamId,
+    ctx.awayTeamId,
+    ctx.homePenalty,
+    ctx.awayPenalty,
+    ctx.stage,
+  )
+  const classifiedCorrect =
+    !!ctx.predictedAdvancesTeamId && !!actualAdv && ctx.predictedAdvancesTeamId === actualAdv
+
+  if (exact) {
+    if (actualDraw) {
+      return classifiedCorrect ? KO_POINTS_EXACT_DRAW_CLASSIFIED : KO_POINTS_EXACT_DRAW_UNCLASSIFIED
+    }
+    return KO_POINTS_EXACT_WIN
+  }
+
+  if (actualDraw && predDraw) {
+    return classifiedCorrect ? KO_POINTS_GENERIC_DRAW_CLASSIFIED : KO_POINTS_GENERIC_DRAW_UNCLASSIFIED
+  }
+
+  if (actualAdv) {
+    const predWinner = predictedWinnerTeamId(
+      predictedHome,
+      predictedAway,
+      ctx.homeTeamId,
+      ctx.awayTeamId,
+    )
+    if (predWinner && predWinner === actualAdv) {
+      return KO_POINTS_WINNER_ONLY
+    }
+    if (classifiedCorrect) {
+      return KO_POINTS_WINNER_ONLY
+    }
+  }
+
+  return 0
+}
 
 /** Equipa que passa no mata-mata (tempo regular ou penáltis). */
 export function resolveAdvancingTeamId(
@@ -70,12 +173,8 @@ function calculateBetPointsGroupStage(
 }
 
 /**
- * Mata-mata: uma única pontuação por jogo (a melhor que se aplicar, sem somar):
- * - 10 placar exato no tempo regular (inclui empate). Não se soma “quem passa” — o exato já define o quadro.
- * - 7 acertou vencedor ou empate no 90' sem placar exato.
- * - 5 acertou só quem passa (ex.: palpite de empate no 90' errado no marcador, mas equipa certa após penáltis).
- * - 0 nada disto.
- * Empate no palpite sem indicar quem passa: 0 (regra de aposta inválida).
+ * Fase de grupos: placar exato ou vencedor/empate no 90'.
+ * Mata-mata: tabela KO_POINTS_* (vitória, empate + classificado, etc.).
  */
 export function calculateBetPoints(
   actualHome: number,
@@ -88,38 +187,8 @@ export function calculateBetPoints(
     return calculateBetPointsGroupStage(actualHome, actualAway, predictedHome, predictedAway)
   }
 
-  const knockout = isKnockoutEliminationStage(ctx.stage)
-  const predDraw = predictedHome === predictedAway
-
-  if (knockout && predDraw && !ctx.predictedAdvancesTeamId) {
-    return 0
-  }
-
-  if (predictedHome === actualHome && predictedAway === actualAway) {
-    return POINTS_EXACT
-  }
-
-  const actualResult =
-    actualHome > actualAway ? "home" : actualHome < actualAway ? "away" : "draw"
-  const predictedResult =
-    predictedHome > predictedAway ? "home" : predictedHome < predictedAway ? "away" : "draw"
-
-  if (actualResult === predictedResult) {
-    return POINTS_RESULT
-  }
-
-  const actualAdv = resolveAdvancingTeamId(
-    actualHome,
-    actualAway,
-    ctx.homeTeamId,
-    ctx.awayTeamId,
-    ctx.homePenalty,
-    ctx.awayPenalty,
-    ctx.stage,
-  )
-
-  if (ctx.predictedAdvancesTeamId && actualAdv && ctx.predictedAdvancesTeamId === actualAdv) {
-    return POINTS_ADVANCE_KNOCKOUT
+  if (isKnockoutEliminationStage(ctx.stage)) {
+    return calculateBetPointsKnockout(actualHome, actualAway, predictedHome, predictedAway, ctx)
   }
 
   return 0

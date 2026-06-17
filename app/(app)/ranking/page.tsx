@@ -475,7 +475,12 @@ export default function RankingPage() {
                         <th className="pb-3 text-center font-medium text-muted-foreground">Mata-mata</th>
                         <th className="pb-3 text-center font-medium text-muted-foreground">Exatos</th>
                         <th className="pb-3 text-center font-medium text-muted-foreground">+7</th>
-                        <th className="pb-3 text-center font-medium text-muted-foreground">+5</th>
+                        <th
+                          className="pb-3 text-center font-medium text-muted-foreground"
+                          title="Outros acertos no mata-mata (não exatos)"
+                        >
+                          MM
+                        </th>
                         <th className="pb-3 text-right font-medium text-muted-foreground">Total</th>
                       </tr>
                     </thead>
@@ -513,8 +518,8 @@ export default function RankingPage() {
                     </tbody>
                   </table>
                   <p className="mt-3 text-xs text-muted-foreground">
-                    * Apostas em jogos com resultado oficial. +7 = acerto de resultado sem exato; +5 = quem passa
-                    (mata-mata).
+                    * Apostas em jogos com resultado oficial. +7 = acerto de resultado na fase de grupos; MM = outros
+                    acertos no mata-mata (não exatos).
                   </p>
                 </div>
               )}

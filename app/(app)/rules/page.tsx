@@ -37,31 +37,39 @@ export default function RulesPage() {
               <span className="text-lg font-bold">+20</span>
             </li>
             <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-primary">
+              <span>Empate exato + classificado certo</span>
+              <span className="text-lg font-bold">+18</span>
+            </li>
+            <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-primary">
               <span>Vencedor correto + placar errado</span>
-              <span className="text-lg font-bold">+12</span>
+              <span className="text-lg font-bold">+15</span>
             </li>
             <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-secondary-foreground">
-              <span>Empate exato + classificado certo</span>
-              <span className="text-lg font-bold">+15</span>
+              <span>Empate exato + classificado errado</span>
+              <span className="text-lg font-bold">+10</span>
             </li>
             <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted px-3 py-2 text-foreground">
               <span>Empate genérico + classificado certo</span>
-              <span className="text-lg font-bold">+8</span>
+              <span className="text-lg font-bold">+5</span>
             </li>
             <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted px-3 py-2 text-foreground">
-              <span>Empate genérico sem classificado certo</span>
+              <span>Empate genérico + classificado errado</span>
               <span className="text-lg font-bold">+3</span>
             </li>
             <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted px-3 py-2 text-foreground">
-              <span>Apenas classificado (errou placar e vencedor no 90&apos;)</span>
-              <span className="text-lg font-bold">+5</span>
+              <span>Apenas classificado correto</span>
+              <span className="text-lg font-bold">+3</span>
+            </li>
+            <li className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted px-3 py-2 text-foreground">
+              <span>Errou tudo</span>
+              <span className="text-lg font-bold">0</span>
             </li>
           </ul>
           <p className="mt-3 text-sm text-foreground/80">
-            <strong className="font-medium text-foreground">Empate genérico</strong> = você palpitou empate no 90&apos;,
-            mas errou os gols (ex.: palpite 0×0 e saiu 1×1).{" "}
-            <strong className="font-medium text-foreground">Classificado</strong> = time que passa (vitória no 90&apos; ou
-            vencedor nos pênaltis).
+            <strong className="font-medium text-foreground">Empate genérico</strong> = palpitou empate no 90&apos;,
+            mas errou os gols (ex.: 0×0 e saiu 1×1).{" "}
+            <strong className="font-medium text-foreground">Classificado</strong> = time que passa (vitória no 90&apos;
+            ou vencedor nos pênaltis).
           </p>
         </div>
 
@@ -72,22 +80,22 @@ export default function RulesPage() {
               Palpite <strong>2×1</strong>, resultado <strong>2×1</strong> → <strong>+20</strong>
             </li>
             <li>
-              Palpite <strong>2×1</strong>, resultado <strong>2×0</strong> → <strong>+12</strong>
+              Palpite <strong>2×1</strong>, resultado <strong>2×0</strong> → <strong>+15</strong>
             </li>
             <li>
-              Palpite <strong>1×1</strong> + classificado certo, resultado <strong>1×1</strong> → <strong>+15</strong>
+              Palpite <strong>1×1</strong> + classificado certo, resultado <strong>1×1</strong> → <strong>+18</strong>
             </li>
             <li>
-              Palpite <strong>1×1</strong> + classificado errado, resultado <strong>1×1</strong> → <strong>+3</strong>
+              Palpite <strong>1×1</strong> + classificado errado, resultado <strong>1×1</strong> → <strong>+10</strong>
             </li>
             <li>
-              Palpite <strong>0×0</strong> + classificado certo, resultado <strong>1×1</strong> → <strong>+8</strong>
+              Palpite <strong>0×0</strong> + classificado certo, resultado <strong>1×1</strong> → <strong>+5</strong>
             </li>
             <li>
               Palpite <strong>0×0</strong> + classificado errado, resultado <strong>1×1</strong> → <strong>+3</strong>
             </li>
             <li>
-              Palpite <strong>2×1</strong>, resultado <strong>1×1</strong> nos pênaltis → <strong>+5</strong> se acertou
+              Palpite <strong>2×1</strong>, resultado <strong>1×1</strong> nos pênaltis → <strong>+3</strong> se acertou
               quem passa
             </li>
           </ul>

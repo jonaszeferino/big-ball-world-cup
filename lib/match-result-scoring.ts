@@ -31,16 +31,16 @@ export const POINTS_RESULT = 7
 
 /** Mata-mata — tempo regular + classificado nos empates. */
 export const KO_POINTS_EXACT = 20
-export const KO_POINTS_WINNER_WRONG_SCORE = 12
-export const KO_POINTS_EXACT_DRAW_CLASSIFIED = 15
-export const KO_POINTS_GENERIC_DRAW_CLASSIFIED = 8
+export const KO_POINTS_EXACT_DRAW_CLASSIFIED = 18
+export const KO_POINTS_WINNER_WRONG_SCORE = 15
+export const KO_POINTS_EXACT_DRAW_UNCLASSIFIED = 10
+export const KO_POINTS_GENERIC_DRAW_CLASSIFIED = 5
 export const KO_POINTS_GENERIC_DRAW_NO_CLASS = 3
-export const KO_POINTS_CLASSIFIED_ONLY = 5
+export const KO_POINTS_CLASSIFIED_ONLY = 3
 
 /** @deprecated aliases */
 export const KO_POINTS_EXACT_WIN = KO_POINTS_EXACT
 export const KO_POINTS_WINNER_ONLY = KO_POINTS_CLASSIFIED_ONLY
-export const KO_POINTS_EXACT_DRAW_UNCLASSIFIED = KO_POINTS_GENERIC_DRAW_NO_CLASS
 export const KO_POINTS_GENERIC_DRAW_UNCLASSIFIED = KO_POINTS_GENERIC_DRAW_NO_CLASS
 
 /** @deprecated Use KO_POINTS_* no mata-mata. */
@@ -50,6 +50,7 @@ export const KNOCKOUT_POINT_VALUES = [
   KO_POINTS_EXACT,
   KO_POINTS_WINNER_WRONG_SCORE,
   KO_POINTS_EXACT_DRAW_CLASSIFIED,
+  KO_POINTS_EXACT_DRAW_UNCLASSIFIED,
   KO_POINTS_GENERIC_DRAW_CLASSIFIED,
   KO_POINTS_GENERIC_DRAW_NO_CLASS,
   KO_POINTS_CLASSIFIED_ONLY,
@@ -59,16 +60,17 @@ export function knockoutPointsLabel(points: number): string | null {
   switch (points) {
     case KO_POINTS_EXACT:
       return "Placar exato"
-    case KO_POINTS_WINNER_WRONG_SCORE:
-      return "Vencedor + placar errado"
     case KO_POINTS_EXACT_DRAW_CLASSIFIED:
       return "Empate exato + classificado"
+    case KO_POINTS_WINNER_WRONG_SCORE:
+      return "Vencedor + placar errado"
+    case KO_POINTS_EXACT_DRAW_UNCLASSIFIED:
+      return "Empate exato, classificado errado"
     case KO_POINTS_GENERIC_DRAW_CLASSIFIED:
       return "Empate genérico + classificado"
     case KO_POINTS_GENERIC_DRAW_NO_CLASS:
-      return "Empate genérico"
     case KO_POINTS_CLASSIFIED_ONLY:
-      return "Apenas classificado"
+      return null
     default:
       return null
   }
@@ -125,7 +127,7 @@ function calculateBetPointsKnockout(
 
   if (exact) {
     if (actualDraw) {
-      return classifiedCorrect ? KO_POINTS_EXACT_DRAW_CLASSIFIED : KO_POINTS_GENERIC_DRAW_NO_CLASS
+      return classifiedCorrect ? KO_POINTS_EXACT_DRAW_CLASSIFIED : KO_POINTS_EXACT_DRAW_UNCLASSIFIED
     }
     return KO_POINTS_EXACT
   }

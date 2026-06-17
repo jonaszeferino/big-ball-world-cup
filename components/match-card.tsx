@@ -306,8 +306,8 @@ export function MatchCard({ match, bet, userId, onBetPlaced, partialResult = nul
               <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
                 <span className="text-xs font-medium text-foreground">Empate no mata-mata: quem passa de fase?</span>
                 <span className="text-[11px] text-muted-foreground">
-                  Obrigatório escolher o classificado. Placar exato +20; empate exato + classificado +15; vencedor
-                  certo + placar errado +12.
+                  Obrigatório escolher o classificado. Placar exato +20; empate exato + classificado +18; vencedor
+                  certo + placar errado +15.
                 </span>
                 <div className="flex flex-wrap gap-2">
                   <Button

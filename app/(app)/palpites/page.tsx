@@ -13,7 +13,9 @@ import { ProfileNameWithStatus } from "@/components/profile-name-with-status"
 import { PalpiteRowOddsCompare, SavedOddsSummary } from "@/components/palpite-odds-compare"
 import { MatchPartialResultBanner } from "@/components/match-partial-result-banner"
 import { MatchOfficialResultBanner } from "@/components/match-official-result-banner"
+import { ProvisionalPointsBadge } from "@/components/provisional-points-badge"
 import { hasAnySavedOdds } from "@/lib/palpite-odds-compare"
+import { calculateProvisionalBetPoints } from "@/lib/provisional-bet-points"
 import { matchStageLabel, type PalpitesApiGroup } from "@/lib/match-bets-board"
 import {
   readPalpitesFilterPref,
@@ -343,7 +345,12 @@ export default function PalpitesPage() {
                               {row.advancesCode ? (
                                 <span className="text-xs text-muted-foreground">passa: {row.advancesCode}</span>
                               ) : null}
-                              {row.pointsEarned != null && group.officialResult ? (
+                              {group.partialResult ? (
+                                <ProvisionalPointsBadge
+                                  points={calculateProvisionalBetPoints(group.partialResult, group.match, row)}
+                                  stage={group.match.stage}
+                                />
+                              ) : row.pointsEarned != null && group.officialResult ? (
                                 <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                                   +{row.pointsEarned} pts
                                 </span>

@@ -43,7 +43,8 @@ export function MatchPartialResultBanner({
       </p>
       {!compact ? (
         <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-          Placar provisório — pode mudar até o admin encerrar a partida no bolão.
+          Placar provisório — pode mudar até o admin encerrar a partida no bolão. Pontos com sufixo{" "}
+          <strong className="font-medium text-foreground/90">prov.</strong> usam este placar.
         </p>
       ) : null}
     </div>

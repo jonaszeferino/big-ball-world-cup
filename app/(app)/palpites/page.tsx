@@ -14,8 +14,11 @@ import { PalpiteRowOddsCompare, SavedOddsSummary } from "@/components/palpite-od
 import { MatchPartialResultBanner } from "@/components/match-partial-result-banner"
 import { MatchOfficialResultBanner } from "@/components/match-official-result-banner"
 import { ProvisionalPointsBadge } from "@/components/provisional-points-badge"
+import { PalpitesProgressSummary } from "@/components/palpites-progress-summary"
+import { useChampionBetStatus } from "@/components/champion-bet-bar"
 import { hasAnySavedOdds } from "@/lib/palpite-odds-compare"
 import { calculateProvisionalBetPoints } from "@/lib/provisional-bet-points"
+import { computeGroupStageProgress } from "@/lib/palpites-progress"
 import { matchStageLabel, type PalpitesApiGroup } from "@/lib/match-bets-board"
 import {
   readPalpitesFilterPref,
@@ -32,6 +35,7 @@ export default function PalpitesPage() {
   const [groups, setGroups] = useState<PalpitesApiGroup[]>([])
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [filter, setFilter] = useState<PalpitesFilterPref>("upcoming")
+  const champion = useChampionBetStatus()
 
   useEffect(() => {
     setFilter(readPalpitesFilterPref())
@@ -126,6 +130,8 @@ export default function PalpitesPage() {
     return filtered.sort(byMatchDateAsc)
   }, [groups, filter, nowMs])
 
+  const groupProgress = useMemo(() => computeGroupStageProgress(groups, nowMs), [groups, nowMs])
+
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -165,6 +171,14 @@ export default function PalpitesPage() {
           Atualizar
         </Button>
       </div>
+
+      <PalpitesProgressSummary
+        groupProgress={groupProgress}
+        championLoading={champion.loading}
+        championHasBet={champion.hasBet}
+        championIsOpen={champion.isOpen}
+        championDeadlineLabel={champion.deadlineLabel}
+      />
 
       <div className="flex flex-wrap gap-2">
         <Button

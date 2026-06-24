@@ -77,7 +77,7 @@ export function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/70 shadow-[0_1px_0_0_hsl(var(--border)/0.35),0_8px_40px_-12px_rgba(15,23,42,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/55 dark:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.45)]">
-        <div className="mx-auto flex h-[3.25rem] max-w-6xl items-center justify-between gap-3 px-4 sm:h-14 sm:px-6">
+        <div className="mx-auto grid h-[3.25rem] max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 sm:h-14 sm:px-6 lg:gap-3">
           <Link
             href="/matches"
             className="group flex shrink-0 items-center gap-2.5 rounded-2xl py-1.5 pl-1 pr-2 transition-colors hover:bg-muted/60"
@@ -94,34 +94,35 @@ export function Navbar() {
           </Link>
 
           <nav
-            className="hidden min-w-0 flex-1 justify-center md:flex"
+            className="hidden min-w-0 justify-center px-1 md:flex"
             aria-label="Navegação principal"
           >
-            <div className="inline-flex max-w-full items-center gap-0.5 rounded-full border border-border/50 bg-muted/35 p-1 shadow-inner backdrop-blur-sm">
+            <div className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border/50 bg-muted/35 p-1 shadow-inner backdrop-blur-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {allLinks.map((link) => {
                 const Icon = link.icon
                 const active = linkActive(link.href)
+                const linkTitle = "title" in link ? link.title : link.label
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    title={"title" in link ? link.title : undefined}
+                    title={linkTitle}
                     className={cn(
-                      "flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-all duration-200",
+                      "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1.5 text-xs font-medium transition-all duration-200 lg:gap-2 lg:px-3 lg:py-2 lg:text-sm",
                       active
                         ? "bg-background text-primary shadow-sm ring-1 ring-border/60"
                         : "text-muted-foreground hover:bg-background/55 hover:text-foreground",
                     )}
                   >
                     <Icon className={cn("h-[1.125rem] w-[1.125rem] shrink-0", active && "text-primary")} />
-                    <span>{link.label}</span>
+                    <span className="hidden lg:inline">{link.label}</span>
                   </Link>
                 )
               })}
             </div>
           </nav>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="relative z-10 flex shrink-0 items-center justify-end gap-1 sm:gap-2">
             <ThemeToggle compact />
             <NavbarChampionBetAlert />
             {profile && (

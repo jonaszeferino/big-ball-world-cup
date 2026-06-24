@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter, Space_Mono } from "next/font/google"
 import { AuthSessionRepair } from "@/components/auth-session-repair"
 import { ThemeProvider } from "@/components/theme-provider"
+import { THEME_STORAGE_KEY, themePrefBootstrapScript } from "@/lib/theme-pref"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
@@ -16,8 +17,17 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themePrefBootstrapScript }} />
+      </head>
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="bbwc-theme">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          storageKey={THEME_STORAGE_KEY}
+          disableTransitionOnChange
+        >
           <AuthSessionRepair />
           {children}
         </ThemeProvider>

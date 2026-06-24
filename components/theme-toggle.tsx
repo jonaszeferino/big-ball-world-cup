@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
+import { writeThemePref, type ThemePref } from "@/lib/theme-pref"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -22,7 +23,12 @@ export function ThemeToggle({ compact = false, className }: ThemeToggleProps) {
 
   const isDark = mounted && resolvedTheme === "dark"
 
-  const toggle = () => setTheme(isDark ? "light" : "dark")
+  const applyTheme = (theme: ThemePref) => {
+    writeThemePref(theme)
+    setTheme(theme)
+  }
+
+  const toggle = () => applyTheme(isDark ? "light" : "dark")
 
   if (!mounted) {
     return compact ? (
@@ -54,7 +60,7 @@ export function ThemeToggle({ compact = false, className }: ThemeToggleProps) {
       <Switch
         id="theme-toggle"
         checked={isDark}
-        onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+        onCheckedChange={(checked) => applyTheme(checked ? "dark" : "light")}
         aria-label="Modo escuro"
       />
       <Moon className="h-4 w-4 text-muted-foreground" aria-hidden />

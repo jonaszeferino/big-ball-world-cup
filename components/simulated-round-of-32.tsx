@@ -62,22 +62,23 @@ function MatchBox({
   )
 }
 
-export function SimulatedRoundOf32({ brackets }: { brackets: SimulatedRoundOf32Bracket[] }) {
+export function SimulatedRoundOf32({
+  brackets,
+  title = "16-avos (simulado com os seus palpites)",
+  description = 'O regulamento da Copa 2026 prevê misturar tipos de jogo nos 16-avos: há 2º contra 2º, 1º contra 2º e 1º contra um dos melhores 3º — não é só 1º vs 2º. Os números "Jogo FIFA" (73–88) seguem o calendário oficial. Os oito vagos de 3º são preenchidos de forma global entre os teus palpites.',
+}: {
+  brackets: SimulatedRoundOf32Bracket[]
+  title?: string
+  description?: string
+}) {
   const sideA = brackets.filter((b) => b.side === "A")
   const sideB = brackets.filter((b) => b.side === "B")
 
   return (
     <Card className="rounded-2xl border-border/80 shadow-sm">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base text-foreground">16-avos (simulado com os seus palpites)</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          O regulamento da Copa 2026 prevê misturar tipos de jogo nos 16-avos: há{" "}
-          <span className="font-medium text-foreground">2º contra 2º</span>,{" "}
-          <span className="font-medium text-foreground">1º contra 2º</span> e{" "}
-          <span className="font-medium text-foreground">1º contra um dos melhores 3º</span> — não é só 1º vs 2º. Os
-          números &quot;Jogo FIFA&quot; (73–88) seguem o calendário oficial. Os oito vagos de 3º são preenchidos de forma
-          global entre os teus palpites.
-        </p>
+        <CardTitle className="text-base text-foreground">{title}</CardTitle>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </CardHeader>
       <CardContent>
         <div className="grid gap-6 md:grid-cols-2">

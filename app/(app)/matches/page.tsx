@@ -23,6 +23,10 @@ import {
 } from "@/lib/simulated-group-standings"
 import { resolveSimulatedRoundOf32 } from "@/lib/simulated-round-of-32"
 import { SimulatedRoundOf32 } from "@/components/simulated-round-of-32"
+import {
+  computeLiveGroupStandings,
+  countLiveGroupMatchesWithScore,
+} from "@/lib/live-group-standings"
 import { Button } from "@/components/ui/button"
 import { findTeamsResultForMatch, resolvePartialMatchResult, shouldShowPartialResult } from "@/lib/match-partial-result"
 import {
@@ -58,17 +62,6 @@ interface Bet {
   predicted_away_score: number
   predicted_advances_team_id: string | null
   points_earned: number
-}
-
-interface TeamStats {
-  played: number
-  won: number
-  draw: number
-  lost: number
-  goalsFor: number
-  goalsAgainst: number
-  goalDiff: number
-  points: number
 }
 
 interface OfficialResult {
@@ -195,11 +188,12 @@ function MatchesPageContent() {
     return () => clearInterval(tick)
   }, [])
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (silent = false) => {
     const supabase = createClient()
     const { user } = await getUserSafe(supabase)
     if (!user) return
     setUserId(user.id)
+    if (!silent) setLoading(true)
 
     const { data: teamData } = await supabase
       .from("teams")
@@ -263,11 +257,23 @@ function MatchesPageContent() {
 
     if (resultsData) setOfficialResults(resultsData as OfficialResult[])
 
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [])
 
   useEffect(() => {
-    loadData()
+    void loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    const refresh = setInterval(() => void loadData(true), 30_000)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void loadData(true)
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      clearInterval(refresh)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   }, [loadData])
 
   useEffect(() => {
@@ -315,6 +321,29 @@ function MatchesPageContent() {
     }
     return map
   }, [matches, officialResults, nowMs])
+
+  const liveStandingsByGroup = useMemo(() => {
+    const partialMap = new Map(
+      [...partialResultsByMatchId.entries()].filter(
+        (entry): entry is [string, NonNullable<(typeof entry)[1]>] => entry[1] != null,
+      ),
+    )
+    return computeLiveGroupStandings(teams, matches, officialResults, partialMap)
+  }, [teams, matches, officialResults, partialResultsByMatchId])
+
+  const liveGroupScoreCounts = useMemo(() => {
+    const partialMap = new Map(
+      [...partialResultsByMatchId.entries()].filter(
+        (entry): entry is [string, NonNullable<(typeof entry)[1]>] => entry[1] != null,
+      ),
+    )
+    return countLiveGroupMatchesWithScore(matches, officialResults, partialMap)
+  }, [matches, officialResults, partialResultsByMatchId])
+
+  const liveRoundOf32 = useMemo(
+    () => resolveSimulatedRoundOf32(liveStandingsByGroup),
+    [liveStandingsByGroup],
+  )
 
   const simulatedStandingsByGroup = useMemo(() => {
     const standingsMap = computeSimulatedGroupStandings(teams, matches, bets)
@@ -382,59 +411,6 @@ function MatchesPageContent() {
     [simulatedStandingsByGroup],
   )
 
-  const calculateTeamStats = useCallback(
-    (teamName: string, groupName: string): TeamStats => {
-      const stats: TeamStats = {
-        played: 0,
-        won: 0,
-        draw: 0,
-        lost: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        goalDiff: 0,
-        points: 0,
-      }
-
-      const teamResults = officialResults.filter(
-        (r) => r.group === groupName && (r.team_home === teamName || r.team_away === teamName),
-      )
-
-      teamResults.forEach((result) => {
-        stats.played++
-
-        if (result.team_home === teamName) {
-          stats.goalsFor += result.goals_home
-          stats.goalsAgainst += result.goals_away
-          if (result.match_result_home === "W") {
-            stats.won++
-            stats.points += 3
-          } else if (result.match_result_home === "T") {
-            stats.draw++
-            stats.points += 1
-          } else {
-            stats.lost++
-          }
-        } else {
-          stats.goalsFor += result.goals_away
-          stats.goalsAgainst += result.goals_home
-          if (result.match_result_away === "W") {
-            stats.won++
-            stats.points += 3
-          } else if (result.match_result_away === "T") {
-            stats.draw++
-            stats.points += 1
-          } else {
-            stats.lost++
-          }
-        }
-      })
-
-      stats.goalDiff = stats.goalsFor - stats.goalsAgainst
-      return stats
-    },
-    [officialResults],
-  )
-
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -453,29 +429,20 @@ function MatchesPageContent() {
   ]
 
   const standingsSection =
-    Object.keys(teamsByGroup).length > 0 ? (
+    Object.keys(liveStandingsByGroup).length > 0 ? (
       <div className="flex flex-col gap-4">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Tabela dos grupos</h2>
           <p className="text-sm text-muted-foreground">
-            Pontos, saldo de gols e estatisticas por grupo (com base nos resultados oficiais cadastrados).
+            Pontos e saldo com base nos resultados oficiais e placares parciais ao vivo (
+            {liveGroupScoreCounts.withScore} de {liveGroupScoreCounts.total} jogos da fase de grupos). Atualiza a cada
+            30 segundos.
           </p>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {GROUPS.map((groupLetter) => {
-            const groupTeams = teamsByGroup[groupLetter]
-            if (!groupTeams || groupTeams.length === 0) return null
-
-            const teamsWithStats = groupTeams
-              .map((team) => ({
-                ...team,
-                stats: calculateTeamStats(team.name, groupLetter),
-              }))
-              .sort((a, b) => {
-                if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points
-                if (b.stats.goalDiff !== a.stats.goalDiff) return b.stats.goalDiff - a.stats.goalDiff
-                return b.stats.goalsFor - a.stats.goalsFor
-              })
+            const rows = liveStandingsByGroup[groupLetter]
+            if (!rows?.length) return null
 
             return (
               <Card key={groupLetter} className="overflow-hidden rounded-2xl border-border/80 shadow-sm">
@@ -520,7 +487,7 @@ function MatchesPageContent() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {teamsWithStats.map((team, index) => (
+                        {rows.map(({ team, stats }, index) => (
                           <tr key={team.id} className="hover:bg-muted/30">
                             <td className="whitespace-nowrap px-1.5 py-2 text-center font-medium text-muted-foreground sm:px-2 sm:py-2.5">
                               {index + 1}
@@ -532,37 +499,37 @@ function MatchesPageContent() {
                               </div>
                             </td>
                             <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:px-1.5 sm:py-2.5">
-                              {team.stats.played}
+                              {stats.played}
                             </td>
                             <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
-                              {team.stats.won}
+                              {stats.won}
                             </td>
                             <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
-                              {team.stats.draw}
+                              {stats.draw}
                             </td>
                             <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
-                              {team.stats.lost}
+                              {stats.lost}
                             </td>
                             <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
-                              {team.stats.goalsFor}
+                              {stats.goalsFor}
                             </td>
                             <td className="whitespace-nowrap px-1 py-2 text-center text-muted-foreground sm:py-2.5">
-                              {team.stats.goalsAgainst}
+                              {stats.goalsAgainst}
                             </td>
                             <td
                               className={`whitespace-nowrap px-1.5 py-2.5 text-center font-medium ${
-                                team.stats.goalDiff > 0
+                                stats.goalDiff > 0
                                   ? "text-green-600"
-                                  : team.stats.goalDiff < 0
+                                  : stats.goalDiff < 0
                                     ? "text-red-600"
                                     : "text-muted-foreground"
                               }`}
                             >
-                              {team.stats.goalDiff > 0 ? "+" : ""}
-                              {team.stats.goalDiff}
+                              {stats.goalDiff > 0 ? "+" : ""}
+                              {stats.goalDiff}
                             </td>
                             <td className="whitespace-nowrap px-2 py-2.5 text-center font-bold text-foreground">
-                              {team.stats.points}
+                              {stats.points}
                             </td>
                           </tr>
                         ))}
@@ -574,6 +541,12 @@ function MatchesPageContent() {
             )
           })}
         </div>
+
+        <SimulatedRoundOf32
+          brackets={liveRoundOf32}
+          title="16-avos (projeção em tempo real)"
+          description='Chaves dos 16-avos montadas com a classificação atual dos grupos — inclui placares parciais ao vivo. O regulamento da Copa 2026 mistura 2º×2º, 1º×2º e 1º×melhor 3º; os oito terceiros são escolhidos globalmente entre os melhores classificados.'
+        />
       </div>
     ) : (
       <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/50 py-16">

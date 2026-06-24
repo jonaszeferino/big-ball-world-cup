@@ -1,13 +1,21 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import { useTheme } from "next-themes"
 import { Toaster } from "sonner"
 
-/** Toaster global (tema claro, alinhado ao app — sem ThemeProvider). */
 export function AppSonner() {
+  const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
+
+  const theme = mounted && resolvedTheme === "dark" ? "dark" : "light"
+
   return (
     <Toaster
       position="top-center"
-      theme="light"
+      theme={theme}
       closeButton
       richColors
       style={{ zIndex: 9999 }}

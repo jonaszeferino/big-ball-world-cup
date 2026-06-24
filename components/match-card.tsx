@@ -341,10 +341,10 @@ export function MatchCard({ match, bet, userId, onBetPlaced, partialResult = nul
               className={cn(
                 "w-full",
                 !canBet
-                  ? "bg-gray-500 text-gray-50 hover:bg-gray-500"
+                  ? "bg-muted text-muted-foreground hover:bg-muted"
                   : hasBet
-                    ? "bg-green-600 text-white hover:bg-green-700"
-                    : "bg-blue-600 text-white hover:bg-blue-700",
+                    ? "bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90",
               )}
             >
               <Check className="mr-1 h-4 w-4" />

@@ -519,9 +519,9 @@ function MatchesPageContent() {
                             <td
                               className={`whitespace-nowrap px-1.5 py-2.5 text-center font-medium ${
                                 stats.goalDiff > 0
-                                  ? "text-green-600"
+                                  ? "text-green-600 dark:text-green-400"
                                   : stats.goalDiff < 0
-                                    ? "text-red-600"
+                                    ? "text-red-600 dark:text-red-400"
                                     : "text-muted-foreground"
                               }`}
                             >
@@ -645,9 +645,9 @@ function MatchesPageContent() {
                             <td
                               className={`whitespace-nowrap px-1.5 py-2.5 text-center font-medium ${
                                 stats.goalDiff > 0
-                                  ? "text-green-600"
+                                  ? "text-green-600 dark:text-green-400"
                                   : stats.goalDiff < 0
-                                    ? "text-red-600"
+                                    ? "text-red-600 dark:text-red-400"
                                     : "text-muted-foreground"
                               }`}
                             >

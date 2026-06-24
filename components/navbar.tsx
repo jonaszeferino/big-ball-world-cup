@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import { isAppAdminEmail } from "@/lib/app-admin"
 import { NavbarProfileChip, type NavbarProfile } from "@/components/navbar-profile-chip"
 import { NavbarChampionBetAlert, NavbarChampionBetAlertMobile } from "@/components/champion-bet-bar"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function Navbar() {
   const pathname = usePathname()
@@ -121,6 +122,7 @@ export function Navbar() {
           </nav>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <ThemeToggle compact />
             <NavbarChampionBetAlert />
             {profile && (
               <NavbarProfileChip
@@ -138,7 +140,7 @@ export function Navbar() {
         aria-hidden={false}
       >
         <nav
-          className="pointer-events-auto flex h-auto min-h-[3.25rem] w-full max-w-md flex-col justify-end gap-0.5 rounded-2xl border border-border/45 bg-card/85 px-1.5 py-1 shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18),0_0_0_1px_rgba(255,255,255,0.06)_inset] backdrop-blur-xl supports-[backdrop-filter]:bg-card/75"
+          className="pointer-events-auto flex h-auto min-h-[3.25rem] w-full max-w-md flex-col justify-end gap-0.5 rounded-2xl border border-border/45 bg-card/85 px-1.5 py-1 shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18),0_0_0_1px_rgba(255,255,255,0.06)_inset] backdrop-blur-xl supports-[backdrop-filter]:bg-card/75 dark:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.04)_inset]"
           aria-label="Navegação principal"
         >
           <NavbarChampionBetAlertMobile />

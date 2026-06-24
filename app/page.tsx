@@ -1,10 +1,14 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { Trophy, Target, BarChart3 } from "lucide-react"
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center bg-background p-6">
+    <main className="relative flex min-h-svh flex-col items-center justify-center bg-background p-6">
+      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+        <ThemeToggle compact />
+      </div>
       <div className="mx-auto flex w-full max-w-md flex-col items-center gap-10 text-center">
         <div className="flex flex-col items-center gap-4">
           <div className="flex h-24 w-24 items-center justify-center rounded-[28px] bg-gradient-to-br from-[#f09433] via-[#dc2743] to-[#bc1888] p-[3px] shadow-lg shadow-black/10">

@@ -44,6 +44,38 @@
     --warning: 45 93% 47%;
     --warning-foreground: 0 0% 9%;
   }
+
+  .dark {
+    color-scheme: dark;
+    --background: 222 16% 8%;
+    --foreground: 210 20% 98%;
+    --card: 222 14% 11%;
+    --card-foreground: 210 20% 98%;
+    --popover: 222 14% 11%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 204 89% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 12% 16%;
+    --secondary-foreground: 210 18% 96%;
+    --muted: 222 12% 15%;
+    --muted-foreground: 215 12% 65%;
+    --accent: 204 89% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 350 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 10% 22%;
+    --input: 222 10% 24%;
+    --ring: 204 89% 55%;
+    --chart-1: 204 89% 55%;
+    --chart-2: 280 55% 62%;
+    --chart-3: 210 45% 55%;
+    --chart-4: 350 75% 58%;
+    --chart-5: 45 90% 52%;
+    --success: 152 55% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 90% 52%;
+    --warning-foreground: 222 16% 8%;
+  }
 }
 
 @layer base {

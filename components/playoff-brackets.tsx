@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ROUND_OF_32_BRACKETS } from "@/lib/playoff-brackets"
+import { FifaKnockoutMatchDateLine } from "@/components/fifa-knockout-schedule-panel"
 
 export function PlayoffBrackets() {
   const sideA = ROUND_OF_32_BRACKETS.filter(b => b.side === "A")
@@ -50,6 +51,7 @@ export function PlayoffBrackets() {
                         <div className="font-medium text-foreground">{bracket.match1.team1}</div>
                         <div className="text-xs text-muted-foreground">vs</div>
                         <div className="font-medium text-foreground">{bracket.match1.team2}</div>
+                        <FifaKnockoutMatchDateLine fifaMatch={bracket.fifaMatch1} />
                       </div>
                       {bracket.match2 && (
                         <div className="rounded-md bg-muted/50 p-2">
@@ -59,6 +61,7 @@ export function PlayoffBrackets() {
                           <div className="font-medium text-foreground">{bracket.match2.team1}</div>
                           <div className="text-xs text-muted-foreground">vs</div>
                           <div className="font-medium text-foreground">{bracket.match2.team2}</div>
+                          <FifaKnockoutMatchDateLine fifaMatch={bracket.fifaMatch2} />
                         </div>
                       )}
                     </CardContent>
@@ -91,6 +94,7 @@ export function PlayoffBrackets() {
                         <div className="font-medium text-foreground">{bracket.match1.team1}</div>
                         <div className="text-xs text-muted-foreground">vs</div>
                         <div className="font-medium text-foreground">{bracket.match1.team2}</div>
+                        <FifaKnockoutMatchDateLine fifaMatch={bracket.fifaMatch1} />
                       </div>
                       {bracket.match2 && (
                         <div className="rounded-md bg-muted/50 p-2">
@@ -100,6 +104,7 @@ export function PlayoffBrackets() {
                           <div className="font-medium text-foreground">{bracket.match2.team1}</div>
                           <div className="text-xs text-muted-foreground">vs</div>
                           <div className="font-medium text-foreground">{bracket.match2.team2}</div>
+                          <FifaKnockoutMatchDateLine fifaMatch={bracket.fifaMatch2} />
                         </div>
                       )}
                     </CardContent>

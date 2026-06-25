@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Trophy, Calendar, Sparkles, ArrowUp, RefreshCw } from "lucide-react"
 import { CountryFlag } from "@/components/country-flag"
 import { PlayoffBrackets } from "@/components/playoff-brackets"
+import { FifaKnockoutSchedulePanel } from "@/components/fifa-knockout-schedule-panel"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -863,6 +864,7 @@ function MatchesPageContent() {
                 <TabsContent key={stage.value} value={stage.value} className="mt-4">
                   {stage.value === "round_of_32" ? (
                     <div className="flex flex-col gap-6">
+                      <FifaKnockoutSchedulePanel matchesTab={stage.value} />
                       <PlayoffBrackets />
                       {stageList.length === 0 ? (
                         emptyPhase
@@ -888,7 +890,14 @@ function MatchesPageContent() {
                       )}
                     </div>
                   ) : rawStageMatches.length === 0 ? (
-                    emptyPhase
+                    stage.value !== "group" ? (
+                      <div className="flex flex-col gap-6">
+                        <FifaKnockoutSchedulePanel matchesTab={stage.value} />
+                        {emptyPhase}
+                      </div>
+                    ) : (
+                      emptyPhase
+                    )
                   ) : stage.value === "group" && groupLayout === "group" && groupedForStage ? (
                     <div className="flex flex-col gap-8">
                       <p className="text-sm text-muted-foreground">
@@ -934,7 +943,10 @@ function MatchesPageContent() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-4">
+                      {stage.value !== "group" ? (
+                        <FifaKnockoutSchedulePanel matchesTab={stage.value} />
+                      ) : null}
                       <p className="text-sm text-muted-foreground">Ordem por data conforme o filtro acima.</p>
                       <div className="grid gap-3 sm:grid-cols-2">
                         {stageList.map((match) => (

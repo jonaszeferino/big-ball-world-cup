@@ -1,6 +1,7 @@
 import React from "react"
 import { Navbar } from "@/components/navbar"
 import { WorldCupCountdownBanner } from "@/components/world-cup-countdown-banner"
+import { BirthdayBanner } from "@/components/birthday-banner"
 import { BroadcastToastGate } from "@/components/broadcast-toast-gate"
 import { NextMatchBetReminder } from "@/components/next-match-bet-reminder"
 import { ChampionBetBar } from "@/components/champion-bet-bar"
@@ -12,6 +13,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <NextMatchBetReminder />
       <Navbar />
       <ChampionBetBar />
+      <BirthdayBanner />
       <WorldCupCountdownBanner />
       <main className="mx-auto w-full max-w-2xl px-3 pb-32 pt-4 sm:px-4 md:max-w-5xl md:px-6 md:pb-8 md:pt-6">
         {children}

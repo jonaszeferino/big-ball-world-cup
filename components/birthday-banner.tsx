@@ -7,38 +7,37 @@ import { getUserSafe } from "@/lib/supabase/auth-session"
 import { Button } from "@/components/ui/button"
 import {
   birthdayBannerDismissKey,
-  isBirthdayProfile,
-  isBirthdayToday,
+  getBirthdayProfileForToday,
+  type BirthdayProfile,
 } from "@/lib/birthday-banner"
 
 export function BirthdayBanner() {
-  const [visible, setVisible] = useState(false)
+  const [profile, setProfile] = useState<BirthdayProfile | null>(null)
 
   useEffect(() => {
-    if (!isBirthdayToday()) return
-
-    const dismissKey = birthdayBannerDismissKey()
-    if (typeof window !== "undefined" && window.localStorage.getItem(dismissKey) === "1") {
-      return
-    }
-
     const supabase = createClient()
     void (async () => {
       const { user } = await getUserSafe(supabase)
       if (!user) return
 
       const { data } = await supabase.from("profiles").select("display_name").eq("id", user.id).single()
-      if (!data?.display_name || !isBirthdayProfile(data.display_name)) return
+      if (!data?.display_name) return
 
-      setVisible(true)
+      const birthday = getBirthdayProfileForToday(data.display_name)
+      if (!birthday) return
+
+      const dismissKey = birthdayBannerDismissKey(birthday)
+      if (window.localStorage.getItem(dismissKey) === "1") return
+
+      setProfile(birthday)
     })()
   }, [])
 
-  if (!visible) return null
+  if (!profile) return null
 
   const dismiss = () => {
-    window.localStorage.setItem(birthdayBannerDismissKey(), "1")
-    setVisible(false)
+    window.localStorage.setItem(birthdayBannerDismissKey(profile), "1")
+    setProfile(null)
   }
 
   return (
@@ -53,7 +52,9 @@ export function BirthdayBanner() {
           <Cake className="h-5 w-5" aria-hidden />
         </div>
         <p className="min-w-0 flex-1 text-center text-sm text-foreground sm:text-base">
-          <span className="font-semibold text-amber-700 dark:text-amber-300">Feliz aniversário, Jaime!</span>
+          <span className="font-semibold text-amber-700 dark:text-amber-300">
+            Feliz aniversário, {profile.greetingName}!
+          </span>
           {" "}
           Parabéns — que seja um dia especial e cheio de boas energias no bolão.
         </p>

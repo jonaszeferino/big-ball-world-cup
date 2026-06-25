@@ -7,6 +7,7 @@ import { getUserSafe } from "@/lib/supabase/auth-session"
 import { Button } from "@/components/ui/button"
 import {
   birthdayBannerDismissKey,
+  DEFAULT_BIRTHDAY_TAGLINE,
   getBirthdayProfileForToday,
   type BirthdayProfile,
 } from "@/lib/birthday-banner"
@@ -56,7 +57,7 @@ export function BirthdayBanner() {
             Feliz aniversário, {profile.greetingName}!
           </span>
           {" "}
-          Parabéns — que seja um dia especial e cheio de boas energias no bolão.
+          {profile.tagline ?? DEFAULT_BIRTHDAY_TAGLINE}
         </p>
         <Button
           type="button"

@@ -5,12 +5,24 @@ export type BirthdayProfile = {
   greetingName: string
   month: number
   day: number
+  /** Frase extra (opcional) abaixo do cumprimento */
+  tagline?: string
 }
 
 export const BIRTHDAY_PROFILES: BirthdayProfile[] = [
+  {
+    displayName: "Jaime",
+    greetingName: "Jaime",
+    month: 6,
+    day: 25,
+    tagline:
+      "Parabéns — hoje palpite errado no bolão não precisa de sessão, só de mais uma fatia de bolo.",
+  },
   { displayName: "Jaime", greetingName: "Jaime", month: 6, day: 25 },
-  { displayName: "Jonas", greetingName: "Jonas", month: 6, day: 25 },
 ]
+
+export const DEFAULT_BIRTHDAY_TAGLINE =
+  "Parabéns — que seja um dia especial e cheio de boas energias no bolão."
 
 export function getBirthdayProfileForToday(
   displayName: string,

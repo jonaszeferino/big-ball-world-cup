@@ -1,5 +1,5 @@
 /** Perfil do Jaime no bolão (display_name em profiles). */
-export const BIRTHDAY_PROFILE_DISPLAY_NAME = "Jiame"
+export const BIRTHDAY_PROFILE_DISPLAY_NAME = "Jaime"
 
 /** Aniversário: 2 de junho (horário local do navegador). */
 export const BIRTHDAY_MONTH = 6

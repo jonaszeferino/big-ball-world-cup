@@ -8,8 +8,8 @@ export type BirthdayProfile = {
 }
 
 export const BIRTHDAY_PROFILES: BirthdayProfile[] = [
-  { displayName: "Jaime", greetingName: "Jaime", month: 6, day: 2 },
-  { displayName: "Jonas", greetingName: "Jonas", month: 6, day: 2 },
+  { displayName: "Jaime", greetingName: "Jaime", month: 6, day: 25 },
+  { displayName: "Jonas", greetingName: "Jonas", month: 6, day: 25 },
 ]
 
 export function getBirthdayProfileForToday(

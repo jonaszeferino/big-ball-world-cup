@@ -26,11 +26,13 @@ import {
   Percent,
   Trophy,
   Flame,
+  LayoutGrid,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ProfileNameWithStatus } from "@/components/profile-name-with-status"
 import {
   BET_STAT_CATEGORIES,
+  applyGroupQualificationStats,
   computePlayerBetStats,
   getCategoryMeta,
   oddsFromRow,
@@ -40,6 +42,8 @@ import {
   type MatchOdds,
   type PlayerBetStats,
 } from "@/lib/bet-stats"
+import { computeGroupQualificationHits } from "@/lib/group-qualification-stats"
+import type { SimTeam } from "@/lib/simulated-group-standings"
 
 interface BetGroupOption {
   id: string
@@ -57,9 +61,14 @@ const CATEGORY_ICONS: Record<BetStatCategory, typeof Target> = {
   resultRate: Percent,
   bestUpsetOdd: Flame,
   advance: Trophy,
+  groupQualification: LayoutGrid,
 }
 
 function statSubline(player: PlayerBetStats, category: BetStatCategory): string | null {
+  if (category === "groupQualification") {
+    if (!player.groupQualificationReady) return "Aguardando fim da fase de grupos"
+    return `${player.groupQualificationHits} de ${player.groupQualificationTotal} classificados certos`
+  }
   const base = `${player.evaluatedBets} jogo${player.evaluatedBets === 1 ? "" : "s"} avaliado${player.evaluatedBets === 1 ? "" : "s"}`
   if (category === "upset" && player.upsetEligible > 0) {
     return `${base} · ${player.upsetEligible} contra favorito`
@@ -77,10 +86,12 @@ function StatLeaderboard({
   players,
   category,
   currentUserId,
+  emptyMessage,
 }: {
   players: PlayerBetStats[]
   category: BetStatCategory
   currentUserId: string | null
+  emptyMessage?: string
 }) {
   const meta = getCategoryMeta(category)
   const sorted = sortPlayersByStat(players, category)
@@ -90,7 +101,7 @@ function StatLeaderboard({
   if (top.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        Ainda não há palpites certos nesta categoria em jogos encerrados.
+        {emptyMessage ?? "Ainda não há palpites certos nesta categoria em jogos encerrados."}
       </p>
     )
   }
@@ -151,6 +162,7 @@ export default function EstatisticasPage() {
   const [myBetGroupId, setMyBetGroupId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [finishedCount, setFinishedCount] = useState(0)
+  const [groupQualificationReady, setGroupQualificationReady] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -173,7 +185,8 @@ export default function EstatisticasPage() {
       const matchSelectBase =
         "id, home_score, away_score, home_team_id, away_team_id, stage"
 
-      const [profilesRes, matchesRes, groupsRes] = await Promise.all([
+      const [profilesRes, matchesRes, groupsRes, teamsRes, groupMatchesRes, officialRes] =
+        await Promise.all([
         supabase
           .from("profiles")
           .select("id, display_name, bet_group_id, status_message")
@@ -185,6 +198,21 @@ export default function EstatisticasPage() {
           .not("home_score", "is", null)
           .not("away_score", "is", null),
         supabase.from("bet_groups").select("id, name").eq("is_deleted", false).order("name", { ascending: true }),
+        supabase
+          .from("teams")
+          .select("id, name, code, group_name")
+          .order("group_name", { ascending: true })
+          .order("name", { ascending: true }),
+        supabase
+          .from("matches")
+          .select(
+            "id, stage, group_name, status, home_score, away_score, home_team:home_team_id(id, name, code, group_name), away_team:away_team_id(id, name, code, group_name)",
+          )
+          .eq("stage", "group")
+          .order("match_date", { ascending: true }),
+        supabase
+          .from("teams_results")
+          .select("team_home, team_away, goals_home, goals_away"),
       ])
 
       let profiles = profilesRes.data
@@ -267,17 +295,69 @@ export default function EstatisticasPage() {
 
       if (!profiles?.length) {
         setPlayers([])
+        setGroupQualificationReady(false)
         setLoading(false)
         return
       }
 
+      const profileIds = profiles.map((p) => p.id as string)
+      const teams = (teamsRes.data ?? []) as SimTeam[]
+      const groupMatches = (groupMatchesRes.data ?? []).map((row) => {
+        const m = row as Record<string, unknown>
+        return {
+          id: m.id as string,
+          stage: m.stage as string,
+          group_name: m.group_name as string | null,
+          status: m.status as string,
+          home_score: m.home_score as number | null,
+          away_score: m.away_score as number | null,
+          home_team: m.home_team as SimTeam,
+          away_team: m.away_team as SimTeam,
+        }
+      })
+      const groupMatchIds = groupMatches.map((m) => m.id)
+
+      let groupBets: {
+        user_id: string
+        match_id: string
+        predicted_home_score: number
+        predicted_away_score: number
+      }[] = []
+
+      if (groupMatchIds.length > 0) {
+        const { data: groupBetRows } = await supabase
+          .from("bets")
+          .select("user_id, match_id, predicted_home_score, predicted_away_score")
+          .in("match_id", groupMatchIds)
+        groupBets = (groupBetRows ?? []).map((b) => ({
+          user_id: b.user_id as string,
+          match_id: b.match_id as string,
+          predicted_home_score: b.predicted_home_score as number,
+          predicted_away_score: b.predicted_away_score as number,
+        }))
+      }
+
+      const groupQualification = computeGroupQualificationHits({
+        teams,
+        groupMatches,
+        officialResults: officialRes.data ?? [],
+        bets: groupBets,
+        profileIds,
+      })
+      setGroupQualificationReady(groupQualification.ready)
+
       setPlayers(
-        computePlayerBetStats({
-          profiles: profiles as Parameters<typeof computePlayerBetStats>[0]["profiles"],
-          finishedMatches,
-          bets,
-          oddsByMatchId,
-        }),
+        applyGroupQualificationStats(
+          computePlayerBetStats({
+            profiles: profiles as Parameters<typeof computePlayerBetStats>[0]["profiles"],
+            finishedMatches,
+            bets,
+            oddsByMatchId,
+          }),
+          groupQualification.hitsByUserId,
+          groupQualification.ready,
+          groupQualification.totalSlots,
+        ),
       )
       setLoading(false)
     }
@@ -358,7 +438,7 @@ export default function EstatisticasPage() {
       </div>
 
       <Tabs defaultValue="exact" className="w-full">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl p-1 sm:grid-cols-4">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl p-1 sm:grid-cols-3 lg:grid-cols-5">
           {BET_STAT_CATEGORIES.map((cat) => {
             const Icon = CATEGORY_ICONS[cat.key]
             return (
@@ -385,6 +465,11 @@ export default function EstatisticasPage() {
                   players={displayPlayers}
                   category={cat.key}
                   currentUserId={currentUserId}
+                  emptyMessage={
+                    cat.key === "groupQualification" && !groupQualificationReady
+                      ? "O ranking de classificados da fase de grupos aparece quando todos os jogos de grupos estiverem encerrados."
+                      : undefined
+                  }
                 />
               </CardContent>
             </Card>

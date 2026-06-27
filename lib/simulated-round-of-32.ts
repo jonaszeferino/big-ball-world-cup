@@ -188,3 +188,20 @@ export function resolveSimulatedRoundOf32(
       : undefined,
   }))
 }
+
+/** Conjunto dos 32 classificados (16-avos) quando todas as vagas estão resolvidas. */
+export function extractQualifiedTeamIds(brackets: SimulatedRoundOf32Bracket[]): Set<string> | null {
+  const ids = new Set<string>()
+  for (const bracket of brackets) {
+    const slots = [
+      bracket.match1.team1,
+      bracket.match1.team2,
+      ...(bracket.match2 ? [bracket.match2.team1, bracket.match2.team2] : []),
+    ]
+    for (const slot of slots) {
+      if (!slot.team?.id) return null
+      ids.add(slot.team.id)
+    }
+  }
+  return ids.size === 32 ? ids : null
+}

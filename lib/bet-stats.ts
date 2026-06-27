@@ -39,6 +39,12 @@ export type PlayerBetStats = {
   upsetHits: number
   totalGoalsHits: number
   advanceHits: number
+  /** Classificados da fase de grupos (1º/2º + 8 melhores 3º) acertados nos palpites. */
+  groupQualificationHits: number
+  /** Total de vagas (32) quando a fase de grupos está encerrada. */
+  groupQualificationTotal: number
+  /** Fase de grupos concluída — ranking de classificação disponível. */
+  groupQualificationReady: boolean
   /** Maior odd decimal do palpite certo contra favorito (0 = nenhuma). */
   bestUpsetOdd: number
   /** Percentual de acerto de resultado (0–100). */
@@ -56,6 +62,7 @@ export type BetStatCategory =
   | "resultRate"
   | "bestUpsetOdd"
   | "advance"
+  | "groupQualification"
 
 export type BetStatCategoryMeta = {
   key: BetStatCategory
@@ -135,6 +142,18 @@ export const BET_STAT_CATEGORIES: BetStatCategoryMeta[] = [
     pick: (p) => p.advanceHits,
     formatValue: (p) => String(p.advanceHits),
     qualifies: (p) => p.advanceHits > 0,
+  },
+  {
+    key: "groupQualification",
+    title: "Grupos",
+    description:
+      "Quantos dos 32 classificados (1º e 2º de cada grupo + 8 melhores terceiros) você acertou nos palpites da fase de grupos.",
+    pick: (p) => p.groupQualificationHits,
+    formatValue: (p) =>
+      p.groupQualificationReady
+        ? `${p.groupQualificationHits}/${p.groupQualificationTotal}`
+        : "—",
+    qualifies: (p) => p.groupQualificationReady && p.groupQualificationHits > 0,
   },
 ]
 
@@ -345,6 +364,9 @@ export function sortPlayersByStat(
     if (category === "bestUpsetOdd" && b.upsetHits !== a.upsetHits) {
       return b.upsetHits - a.upsetHits
     }
+    if (category === "groupQualification" && b.groupQualificationHits !== a.groupQualificationHits) {
+      return b.groupQualificationHits - a.groupQualificationHits
+    }
     if (b.evaluatedBets !== a.evaluatedBets) return b.evaluatedBets - a.evaluatedBets
     return a.displayName.localeCompare(b.displayName, "pt")
   })
@@ -357,10 +379,30 @@ const EMPTY_AGG: Omit<PlayerBetStats, "userId" | "displayName" | "statusMessage"
   upsetHits: 0,
   totalGoalsHits: 0,
   advanceHits: 0,
+  groupQualificationHits: 0,
+  groupQualificationTotal: 0,
+  groupQualificationReady: false,
   bestUpsetOdd: 0,
   resultHitRatePercent: 0,
   evaluatedBets: 0,
   upsetEligible: 0,
+}
+
+export function applyGroupQualificationStats(
+  players: PlayerBetStats[],
+  hitsByUserId: Map<string, number>,
+  ready: boolean,
+  totalSlots: number,
+): PlayerBetStats[] {
+  return players.map((p) => {
+    const hits = hitsByUserId.get(p.userId) ?? 0
+    return {
+      ...p,
+      groupQualificationHits: ready ? hits : 0,
+      groupQualificationTotal: ready ? totalSlots : 0,
+      groupQualificationReady: ready,
+    }
+  })
 }
 
 export function computePlayerBetStats(input: {

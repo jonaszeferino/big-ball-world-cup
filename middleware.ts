@@ -6,5 +6,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/matches/:path*', '/odds/:path*', '/palpites/:path*', '/ranking/:path*', '/scorers/:path*', '/groups/:path*', '/admin/:path*'],
+  matcher: ['/matches/:path*', '/odds/:path*', '/palpites/:path*', '/ranking/:path*', '/estatisticas/:path*', '/scorers/:path*', '/groups/:path*', '/admin/:path*'],
 }

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { getUserSafe } from "@/lib/supabase/auth-session"
-import { Trophy, BarChart3, Gamepad2, Shield, BookOpen, Users, Target, ClipboardList } from "lucide-react"
+import { Trophy, BarChart3, Gamepad2, Shield, BookOpen, Users, Target, ClipboardList, LineChart } from "lucide-react"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { isAppAdminEmail } from "@/lib/app-admin"
@@ -56,6 +56,7 @@ export function Navbar() {
     { href: "/matches", label: "Apostar", icon: Gamepad2, title: "Fazer ou alterar suas apostas" },
     { href: "/palpites", label: "Palpites feitos", icon: ClipboardList, title: "Só visualizar — não dá para apostar aqui" },
     { href: "/ranking", label: "Ranking", icon: BarChart3 },
+    { href: "/estatisticas", label: "Stats", icon: LineChart, title: "Estatísticas dos palpites" },
     { href: "/scorers", label: "Artilheiros", icon: Target },
     { href: "/rules", label: "Regras", icon: BookOpen },
   ] as const

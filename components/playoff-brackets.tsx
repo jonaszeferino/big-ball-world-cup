@@ -5,28 +5,21 @@ import { Badge } from "@/components/ui/badge"
 import { ROUND_OF_32_BRACKETS } from "@/lib/playoff-brackets"
 import { FifaKnockoutMatchDateLine } from "@/components/fifa-knockout-schedule-panel"
 
-export function PlayoffBrackets() {
+export function PlayoffBrackets({ embedded = false }: { embedded?: boolean }) {
   const sideA = ROUND_OF_32_BRACKETS.filter(b => b.side === "A")
   const sideB = ROUND_OF_32_BRACKETS.filter(b => b.side === "B")
 
-  return (
-    <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-card-foreground">
-            Estrutura dos 16-avos de Final (Rodada de 32)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Na Copa 2026, os 16 jogos desta fase (oficialmente jogos 73 a 88) misturam{" "}
-            <span className="font-medium text-foreground">2º contra 2º</span>,{" "}
-            <span className="font-medium text-foreground">1º contra 2º</span> e{" "}
-            <span className="font-medium text-foreground">1º contra um dos 8 melhores 3º</span> — não é só cruzamento
-            1º vs 2º. Os terceiros obedecem ao Anexo C do regulamento FIFA (495 combinações possíveis).
-          </p>
+  const body = (
+    <>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Na Copa 2026, os 16 jogos desta fase (oficialmente jogos 73 a 88) misturam{" "}
+        <span className="font-medium text-foreground">2º contra 2º</span>,{" "}
+        <span className="font-medium text-foreground">1º contra 2º</span> e{" "}
+        <span className="font-medium text-foreground">1º contra um dos 8 melhores 3º</span> — não é só cruzamento
+        1º vs 2º. Os terceiros obedecem ao Anexo C do regulamento FIFA (495 combinações possíveis).
+      </p>
 
-          <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
             {/* Lado A */}
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2">
@@ -113,7 +106,20 @@ export function PlayoffBrackets() {
               </div>
             </div>
           </div>
-        </CardContent>
+    </>
+  )
+
+  if (embedded) return body
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-card-foreground">
+            Estrutura dos 16-avos de Final (Rodada de 32)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>{body}</CardContent>
       </Card>
     </div>
   )

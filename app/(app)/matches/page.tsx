@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState, useCallback, useMemo } from "react"
+import { Suspense, useEffect, useState, useCallback, useMemo, useRef } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -9,10 +9,11 @@ import { matchStageToMatchesTab } from "@/lib/next-match-bet-reminder"
 import { MatchCard } from "@/components/match-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Trophy, Calendar, Sparkles, ArrowUp, RefreshCw } from "lucide-react"
+import { Loader2, Trophy, Calendar, Sparkles } from "lucide-react"
+import { MATCHES_REFRESH_EVENT } from "@/components/matches-floating-actions"
 import { CountryFlag } from "@/components/country-flag"
-import { PlayoffBrackets } from "@/components/playoff-brackets"
-import { FifaKnockoutSchedulePanel } from "@/components/fifa-knockout-schedule-panel"
+import { MatchesKnockoutAccordions } from "@/components/matches-knockout-accordions"
+import { MatchesNextStageCta } from "@/components/matches-next-stage-cta"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -34,6 +35,13 @@ import {
   readMatchesHideFinishedPref,
   writeMatchesHideFinishedPref,
 } from "@/lib/matches-hide-finished-pref"
+import {
+  getDefaultMatchesStageTab,
+  getMatchesStageTab,
+  getNextMatchesStageTab,
+  isMatchesStageFullyFinished,
+  MATCHES_STAGE_TABS,
+} from "@/lib/matches-stage-navigation"
 
 interface Team {
   id: string
@@ -168,6 +176,7 @@ function MatchesPageContent() {
   const [loading, setLoading] = useState(true)
   const [mainView, setMainView] = useState<"partidas" | "classificacao" | "simulacao">("partidas")
   const [activeTab, setActiveTab] = useState("group")
+  const userPickedStageTab = useRef(false)
   /** Fase de grupos: lista por letra de grupo ou lista única por data. */
   const [groupLayout, setGroupLayout] = useState<"group" | "date">("date")
   /** Ordenação por data do jogo (só aplica em lista por data). */
@@ -266,6 +275,12 @@ function MatchesPageContent() {
   }, [loadData])
 
   useEffect(() => {
+    const onRefresh = () => void loadData()
+    window.addEventListener(MATCHES_REFRESH_EVENT, onRefresh)
+    return () => window.removeEventListener(MATCHES_REFRESH_EVENT, onRefresh)
+  }, [loadData])
+
+  useEffect(() => {
     const refresh = setInterval(() => void loadData(true), 30_000)
     const onVisible = () => {
       if (document.visibilityState === "visible") void loadData(true)
@@ -287,6 +302,7 @@ function MatchesPageContent() {
     }
 
     setMainView("partidas")
+    userPickedStageTab.current = true
     setActiveTab(matchStageToMatchesTab(match.stage))
 
     const t = window.setTimeout(() => {
@@ -296,6 +312,16 @@ function MatchesPageContent() {
 
     return () => clearTimeout(t)
   }, [loading, matches, apostaFocusId, router])
+
+  const defaultStageTab = useMemo(
+    () => getDefaultMatchesStageTab(matches, nowMs),
+    [matches, nowMs],
+  )
+
+  useEffect(() => {
+    if (loading || matches.length === 0 || apostaFocusId || userPickedStageTab.current) return
+    setActiveTab(defaultStageTab)
+  }, [loading, matches.length, apostaFocusId, defaultStageTab])
 
   const teamsByGroup = useMemo(
     () =>
@@ -420,14 +446,41 @@ function MatchesPageContent() {
     )
   }
 
-  const stages = [
-    { value: "group", label: "Fase de grupos" },
-    { value: "round_of_32", label: "16-avos" },
-    { value: "round_of_16", label: "Oitavas" },
-    { value: "quarter_final", label: "Quartas" },
-    { value: "semi_final", label: "Semi" },
-    { value: "final", label: "Finais" },
-  ]
+  const stages = MATCHES_STAGE_TABS
+
+  const renderStageNextCta = (stageValue: string) => {
+    if (!isMatchesStageFullyFinished(matches, stageValue)) return null
+    const current = getMatchesStageTab(stageValue)
+    const next = getNextMatchesStageTab(stageValue)
+    if (!current || !next) return null
+    return (
+      <MatchesNextStageCta
+        currentLabel={current.label}
+        nextLabel={next.label}
+        onGoNext={() => setActiveTab(next.value)}
+      />
+    )
+  }
+
+  const renderMatchCards = (list: Match[]) => (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {list.map((match) => (
+        <MatchCard
+          key={match.id}
+          match={match}
+          bet={bets.find((b) => b.match_id === match.id) || null}
+          userId={userId!}
+          onBetPlaced={loadData}
+          partialResult={partialResultsByMatchId.get(match.id) ?? null}
+        />
+      ))}
+    </div>
+  )
+
+  const renderKnockoutExtras = (stageValue: string) => {
+    if (stageValue === "group") return null
+    return <MatchesKnockoutAccordions stageTab={stageValue} />
+  }
 
   const standingsSection =
     Object.keys(liveStandingsByGroup).length > 0 ? (
@@ -717,7 +770,13 @@ function MatchesPageContent() {
         </TabsContent>
 
         <TabsContent value="partidas" className="mt-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              userPickedStageTab.current = true
+              setActiveTab(value)
+            }}
+          >
             <TabsList className="w-full justify-start overflow-x-auto rounded-xl p-1">
               {stages.map((stage) => (
                 <TabsTrigger key={stage.value} value={stage.value} className="rounded-lg text-xs sm:text-sm">
@@ -861,11 +920,11 @@ function MatchesPageContent() {
               )
 
               return (
-                <TabsContent key={stage.value} value={stage.value} className="mt-4">
+                <TabsContent key={stage.value} value={stage.value} className="mt-4 flex flex-col gap-4">
+                  {renderStageNextCta(stage.value)}
+
                   {stage.value === "round_of_32" ? (
                     <div className="flex flex-col gap-6">
-                      <FifaKnockoutSchedulePanel matchesTab={stage.value} />
-                      <PlayoffBrackets />
                       {stageList.length === 0 ? (
                         emptyPhase
                       ) : (
@@ -874,26 +933,16 @@ function MatchesPageContent() {
                           <p className="-mt-2 text-sm text-muted-foreground">
                             Ordem por data conforme o filtro acima.
                           </p>
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            {stageList.map((match) => (
-                              <MatchCard
-                                key={match.id}
-                                match={match}
-                                bet={bets.find((b) => b.match_id === match.id) || null}
-                                userId={userId!}
-                                onBetPlaced={loadData}
-                                partialResult={partialResultsByMatchId.get(match.id) ?? null}
-                              />
-                            ))}
-                          </div>
+                          {renderMatchCards(stageList)}
                         </>
                       )}
+                      {renderKnockoutExtras(stage.value)}
                     </div>
                   ) : rawStageMatches.length === 0 ? (
                     stage.value !== "group" ? (
                       <div className="flex flex-col gap-6">
-                        <FifaKnockoutSchedulePanel matchesTab={stage.value} />
                         {emptyPhase}
+                        {renderKnockoutExtras(stage.value)}
                       </div>
                     ) : (
                       emptyPhase
@@ -908,18 +957,7 @@ function MatchesPageContent() {
                         return (
                           <div key={g}>
                             <h2 className="mb-3 text-lg font-semibold text-foreground">Grupo {g}</h2>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              {groupMatches.map((match) => (
-                                <MatchCard
-                                  key={match.id}
-                                  match={match}
-                                  bet={bets.find((b) => b.match_id === match.id) || null}
-                                  userId={userId!}
-                                  onBetPlaced={loadData}
-                                  partialResult={partialResultsByMatchId.get(match.id) ?? null}
-                                />
-                              ))}
-                            </div>
+                            {renderMatchCards(groupMatches)}
                           </div>
                         )
                       })}
@@ -929,37 +967,15 @@ function MatchesPageContent() {
                       <p className="text-sm text-muted-foreground">
                         Lista única ordenada pela data; o grupo de cada jogo aparece no cartão.
                       </p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {stageList.map((match) => (
-                          <MatchCard
-                            key={match.id}
-                            match={match}
-                            bet={bets.find((b) => b.match_id === match.id) || null}
-                            userId={userId!}
-                            onBetPlaced={loadData}
-                            partialResult={partialResultsByMatchId.get(match.id) ?? null}
-                          />
-                        ))}
-                      </div>
+                      {renderMatchCards(stageList)}
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-4">
-                      {stage.value !== "group" ? (
-                        <FifaKnockoutSchedulePanel matchesTab={stage.value} />
-                      ) : null}
-                      <p className="text-sm text-muted-foreground">Ordem por data conforme o filtro acima.</p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {stageList.map((match) => (
-                          <MatchCard
-                            key={match.id}
-                            match={match}
-                            bet={bets.find((b) => b.match_id === match.id) || null}
-                            userId={userId!}
-                            onBetPlaced={loadData}
-                            partialResult={partialResultsByMatchId.get(match.id) ?? null}
-                          />
-                        ))}
+                    <div className="flex flex-col gap-6">
+                      <div className="flex flex-col gap-4">
+                        <p className="text-sm text-muted-foreground">Ordem por data conforme o filtro acima.</p>
+                        {renderMatchCards(stageList)}
                       </div>
+                      {renderKnockoutExtras(stage.value)}
                     </div>
                   )}
                 </TabsContent>
@@ -968,33 +984,6 @@ function MatchesPageContent() {
           </Tabs>
         </TabsContent>
       </Tabs>
-
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-end px-3 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] pt-2 md:bottom-0 md:pb-6 md:pt-0">
-        <div className="pointer-events-auto flex flex-col gap-2">
-          <Button
-            id="backToTheTop"
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="h-11 w-11 rounded-full border border-border bg-card shadow-md"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            aria-label="Voltar ao topo"
-          >
-            <ArrowUp className="h-5 w-5" />
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="h-11 w-11 rounded-full border border-border bg-card shadow-md"
-            onClick={() => void loadData()}
-            aria-label="Atualizar partidas e apostas"
-            title="Atualizar"
-          >
-            <RefreshCw className="h-5 w-5" />
-          </Button>
-        </div>
-      </div>
     </div>
   )
 }

@@ -23,6 +23,7 @@ import { Loader2, Plus, RotateCcw, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { reopenMatchAndResetBets } from "@/lib/match-result-scoring"
+import { brazilDatetimeLocalToIso, isoToBrazilDatetimeLocal } from "@/lib/match-datetime-brazil"
 
 interface Team {
   id: string
@@ -54,9 +55,7 @@ const STAGES = [
 ]
 
 function toDatetimeLocalValue(iso: string): string {
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return isoToBrazilDatetimeLocal(iso)
 }
 
 function matchOfficialCode(m: Match) {
@@ -257,7 +256,7 @@ export function AdminMatches() {
     const { error: insertErr } = await supabase.from("matches").insert({
       home_team_id: homeTeamId,
       away_team_id: awayTeamId,
-      match_date: new Date(matchDate).toISOString(),
+      match_date: brazilDatetimeLocalToIso(matchDate),
       stage,
       group_name: stage === "group" ? groupName : null,
       status: "scheduled",
@@ -281,7 +280,7 @@ export function AdminMatches() {
     const supabase = createClient()
     const { error: updateErr } = await supabase
       .from("matches")
-      .update({ match_date: new Date(datetimeLocal).toISOString() })
+      .update({ match_date: brazilDatetimeLocalToIso(datetimeLocal) })
       .eq("id", matchId)
     if (updateErr) {
       setError(updateErr.message)

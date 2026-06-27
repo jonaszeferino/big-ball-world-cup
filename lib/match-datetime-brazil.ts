@@ -46,6 +46,53 @@ export function isBeforeMatchKickoff(matchDateIso: string, nowMs: number): boole
   return nowMs < kickoff
 }
 
+const BRAZIL_TZ = "America/Sao_Paulo"
+
+/** Converte ISO UTC para valor de `<input type="datetime-local">` em horário de Brasília. */
+export function isoToBrazilDatetimeLocal(matchDateIso: string): string {
+  const kickoff = parseMatchKickoffMs(matchDateIso)
+  if (kickoff === null) return ""
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BRAZIL_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(kickoff))
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? ""
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`
+}
+
+/** Valor de datetime-local interpretado como horário de Brasília → ISO UTC. */
+export function brazilDatetimeLocalToIso(datetimeLocal: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(datetimeLocal.trim())
+  if (!m) {
+    const fallback = parseMatchKickoffMs(datetimeLocal)
+    return fallback !== null ? new Date(fallback).toISOString() : new Date().toISOString()
+  }
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  const h = Number(m[4])
+  const mi = Number(m[5])
+  // Brasília = UTC−3 (sem horário de verão desde 2019)
+  return new Date(Date.UTC(y, mo - 1, d, h + 3, mi)).toISOString()
+}
+
+/** Ano civil do apito no fuso de Brasília (útil para validar cadastro Copa 2026). */
+export function matchKickoffYearBrazil(matchDateIso: string): number | null {
+  const kickoff = parseMatchKickoffMs(matchDateIso)
+  if (kickoff === null) return null
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BRAZIL_TZ,
+    year: "numeric",
+  }).formatToParts(new Date(kickoff))
+  const year = parts.find((p) => p.type === "year")?.value
+  return year ? Number(year) : null
+}
+
 /** Palpites públicos só a partir do apito; se a data for inválida, mantém oculto. */
 export function arePalpitesRevealed(matchDateIso: string, nowMs: number): boolean {
   const kickoff = parseMatchKickoffMs(matchDateIso)

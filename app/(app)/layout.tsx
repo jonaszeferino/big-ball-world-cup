@@ -5,6 +5,7 @@ import { BirthdayBanner } from "@/components/birthday-banner"
 import { BroadcastToastGate } from "@/components/broadcast-toast-gate"
 import { NextMatchBetReminder } from "@/components/next-match-bet-reminder"
 import { ChampionBetBar } from "@/components/champion-bet-bar"
+import { AppFloatingStack } from "@/components/app-floating-stack"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -18,6 +19,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="mx-auto w-full max-w-2xl px-3 pb-32 pt-4 sm:px-4 md:max-w-5xl md:px-6 md:pb-8 md:pt-6">
         {children}
       </main>
+      <AppFloatingStack />
     </div>
   )
 }

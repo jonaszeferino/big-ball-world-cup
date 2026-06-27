@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { CountryFlag } from "@/components/country-flag"
 import { MatchSavedOddsPanel } from "@/components/match-saved-odds-panel"
 import { MatchPartialResultBanner } from "@/components/match-partial-result-banner"
-import { formatMatchDateTimeBrazil, isBeforeMatchKickoff } from "@/lib/match-datetime-brazil"
+import { formatMatchDateTimeBrazilWithYear, isBeforeMatchKickoff } from "@/lib/match-datetime-brazil"
 import type { PartialMatchResult } from "@/lib/match-partial-result"
 import { isGroupStage, isKnockoutEliminationStage } from "@/lib/match-stage"
 import { POINTS_EXACT, POINTS_RESULT, knockoutPointsLabel } from "@/lib/match-result-scoring"
@@ -191,9 +191,9 @@ export function MatchCard({ match, bet, userId, onBetPlaced, partialResult = nul
           </div>
           <span
             className="text-xs text-muted-foreground"
-            title="Data e hora no horário de Brasília"
+            title={`Início: ${formatMatchDateTimeBrazilWithYear(match.match_date)} (Brasília)`}
           >
-            {formatMatchDateTimeBrazil(match.match_date)}
+            {formatMatchDateTimeBrazilWithYear(match.match_date)}
           </span>
         </div>
 
@@ -353,7 +353,9 @@ export function MatchCard({ match, bet, userId, onBetPlaced, partialResult = nul
             {error && <p className="text-xs text-destructive text-center">{error}</p>}
             {match.status === "scheduled" && !beforeKickoff && (
               <p className="text-xs text-center text-muted-foreground">
-                Apostas encerradas — o jogo já começou (data/hora da partida em horário de Brasília).
+                Apostas encerradas — o horário de início (
+                {formatMatchDateTimeBrazilWithYear(match.match_date)} BRT) já passou. Confira o ano no Admin se
+                a data parecer futura.
               </p>
             )}
           </div>

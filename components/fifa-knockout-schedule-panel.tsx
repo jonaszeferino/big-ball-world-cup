@@ -14,6 +14,8 @@ type FifaKnockoutSchedulePanelProps = {
   /** Valor da sub-aba em Partidas (group, round_of_32, …). */
   matchesTab: string
   compact?: boolean
+  /** Sem Card/título — para uso dentro de accordion. */
+  embedded?: boolean
 }
 
 function ScheduleTable({ rows }: { rows: FifaKnockoutMatchSchedule[] }) {
@@ -55,7 +57,11 @@ function ScheduleTable({ rows }: { rows: FifaKnockoutMatchSchedule[] }) {
   )
 }
 
-export function FifaKnockoutSchedulePanel({ matchesTab, compact = false }: FifaKnockoutSchedulePanelProps) {
+export function FifaKnockoutSchedulePanel({
+  matchesTab,
+  compact = false,
+  embedded = false,
+}: FifaKnockoutSchedulePanelProps) {
   const rows = sortFifaKnockoutSchedule(getFifaKnockoutScheduleForMatchesTab(matchesTab))
   if (rows.length === 0) return null
 
@@ -63,6 +69,24 @@ export function FifaKnockoutSchedulePanel({ matchesTab, compact = false }: FifaK
     matchesTab === "final"
       ? "Calendário FIFA — 3º lugar e final"
       : `Calendário FIFA — ${FIFA_KNOCKOUT_STAGE_LABELS[matchesTab as keyof typeof FIFA_KNOCKOUT_STAGE_LABELS] ?? "mata-mata"}`
+
+  if (embedded) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Datas e horários oficiais da FIFA em{" "}
+          <strong className="font-medium text-foreground">horário de Brasília</strong>. Sujeito a alteração pela
+          FIFA.
+        </p>
+        {matchesTab === "round_of_32" ? (
+          <Badge variant="outline" className="w-fit text-xs">
+            Jogos 73 a 88 · 28/jun a 3/jul/2026
+          </Badge>
+        ) : null}
+        <ScheduleTable rows={rows} />
+      </div>
+    )
+  }
 
   if (compact) {
     return (

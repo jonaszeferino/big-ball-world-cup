@@ -44,11 +44,13 @@ interface Bet {
   points_earned: number
 }
 
+export type PlacedBet = Bet
+
 interface MatchCardProps {
   match: Match
   bet: Bet | null
   userId: string
-  onBetPlaced: () => void
+  onBetPlaced: (bet: PlacedBet) => void
   partialResult?: PartialMatchResult | null
 }
 
@@ -132,17 +134,37 @@ export function MatchCard({ match, bet, userId, onBetPlaced, partialResult = nul
           })
           .eq("id", bet.id)
         if (updateErr) throw updateErr
-      } else {
-        const { error: insertErr } = await supabase.from("bets").insert({
-          user_id: userId,
+        onBetPlaced({
+          id: bet.id,
           match_id: match.id,
           predicted_home_score: home,
           predicted_away_score: away,
           predicted_advances_team_id: advancesPayload,
+          points_earned: bet.points_earned ?? 0,
         })
+      } else {
+        const { data: inserted, error: insertErr } = await supabase
+          .from("bets")
+          .insert({
+            user_id: userId,
+            match_id: match.id,
+            predicted_home_score: home,
+            predicted_away_score: away,
+            predicted_advances_team_id: advancesPayload,
+          })
+          .select("id, match_id, predicted_home_score, predicted_away_score, predicted_advances_team_id, points_earned")
+          .single()
         if (insertErr) throw insertErr
+        onBetPlaced({
+          id: inserted.id as string,
+          match_id: inserted.match_id as string,
+          predicted_home_score: inserted.predicted_home_score as number,
+          predicted_away_score: inserted.predicted_away_score as number,
+          predicted_advances_team_id:
+            (inserted as { predicted_advances_team_id?: string | null }).predicted_advances_team_id ?? null,
+          points_earned: (inserted.points_earned as number | null) ?? 0,
+        })
       }
-      onBetPlaced()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao salvar aposta")
     } finally {

@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { getUserSafe } from "@/lib/supabase/auth-session"
 import { matchStageToMatchesTab } from "@/lib/next-match-bet-reminder"
-import { MatchCard } from "@/components/match-card"
+import { MatchCard, type PlacedBet } from "@/components/match-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Trophy, Calendar, Sparkles } from "lucide-react"
@@ -270,12 +270,24 @@ function MatchesPageContent() {
     if (!silent) setLoading(false)
   }, [])
 
+  const handleBetPlaced = useCallback((savedBet: PlacedBet) => {
+    setBets((prev) => {
+      const index = prev.findIndex((b) => b.match_id === savedBet.match_id)
+      if (index >= 0) {
+        const next = [...prev]
+        next[index] = savedBet
+        return next
+      }
+      return [...prev, savedBet]
+    })
+  }, [])
+
   useEffect(() => {
     void loadData()
   }, [loadData])
 
   useEffect(() => {
-    const onRefresh = () => void loadData()
+    const onRefresh = () => void loadData(true)
     window.addEventListener(MATCHES_REFRESH_EVENT, onRefresh)
     return () => window.removeEventListener(MATCHES_REFRESH_EVENT, onRefresh)
   }, [loadData])
@@ -470,7 +482,7 @@ function MatchesPageContent() {
           match={match}
           bet={bets.find((b) => b.match_id === match.id) || null}
           userId={userId!}
-          onBetPlaced={loadData}
+          onBetPlaced={handleBetPlaced}
           partialResult={partialResultsByMatchId.get(match.id) ?? null}
         />
       ))}

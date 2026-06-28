@@ -7,12 +7,12 @@ import {
 } from "@/lib/champion-bet-deadline"
 import type { ChampionBetPayload, ChampionBetTeam } from "@/lib/champion-bet-types"
 
-async function loadLastGroupMatchDate(supabase: Awaited<ReturnType<typeof createClient>>) {
+async function loadFirstRoundOf32MatchDate(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data } = await supabase
     .from("matches")
     .select("match_date")
-    .eq("stage", "group")
-    .order("match_date", { ascending: false })
+    .eq("stage", "round_of_32")
+    .order("match_date", { ascending: true })
     .limit(1)
     .maybeSingle()
   return (data?.match_date as string | undefined) ?? null
@@ -29,10 +29,10 @@ export async function GET() {
   }
 
   const nowMs = Date.now()
-  const lastGroupMatchDate = await loadLastGroupMatchDate(supabase)
-  const isOpen = isChampionBetOpen(lastGroupMatchDate, nowMs)
-  const deadlineMs = getChampionBetDeadlineMs(lastGroupMatchDate)
-  const deadlineLabel = formatChampionBetDeadlineLabel(lastGroupMatchDate)
+  const firstRoundOf32MatchDate = await loadFirstRoundOf32MatchDate(supabase)
+  const isOpen = isChampionBetOpen(firstRoundOf32MatchDate, nowMs)
+  const deadlineMs = getChampionBetDeadlineMs(firstRoundOf32MatchDate)
+  const deadlineLabel = formatChampionBetDeadlineLabel(firstRoundOf32MatchDate)
 
   const [teamsRes, betRes] = await Promise.all([
     supabase.from("teams").select("id, name, code").order("name", { ascending: true }),
@@ -72,7 +72,7 @@ export async function GET() {
     isOpen,
     deadlineMs,
     deadlineLabel,
-    lastGroupMatchDate,
+    firstRoundOf32MatchDate,
     serverNow: nowMs,
     bet,
     teams: (teamsRes.data ?? []) as ChampionBetTeam[],
@@ -89,8 +89,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
   }
 
-  const lastGroupMatchDate = await loadLastGroupMatchDate(supabase)
-  if (!isChampionBetOpen(lastGroupMatchDate, Date.now())) {
+  const firstRoundOf32MatchDate = await loadFirstRoundOf32MatchDate(supabase)
+  if (!isChampionBetOpen(firstRoundOf32MatchDate, Date.now())) {
     return NextResponse.json({ error: "Prazo do palpite do campeão encerrado." }, { status: 403 })
   }
 

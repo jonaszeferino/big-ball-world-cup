@@ -185,7 +185,7 @@ export function ChampionBetBar() {
             <p className="mt-1 text-xs text-foreground/80">
               Escolha o campeão e o vice-campeão da Copa. Prazo:{" "}
               <strong className="font-medium text-foreground">
-                10 minutos antes do fim da última partida da fase de grupos
+                1 minuto antes da primeira partida dos 16-avos
               </strong>
               {deadlineLabel ? ` (até ${deadlineLabel}, Brasília)` : ""}.{" "}
               <Link href="/rules" className="font-medium text-primary underline-offset-2 hover:underline">

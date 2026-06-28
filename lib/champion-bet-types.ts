@@ -17,7 +17,7 @@ export type ChampionBetApiResponse = {
   isOpen: boolean
   deadlineMs: number | null
   deadlineLabel: string | null
-  lastGroupMatchDate: string | null
+  firstRoundOf32MatchDate: string | null
   serverNow: number
   bet: ChampionBetPayload | null
   teams: ChampionBetTeam[]

@@ -104,9 +104,9 @@ export default function RulesPage() {
         <div className="rounded-lg border border-border bg-card p-5 md:col-span-2">
           <h2 className="text-lg font-semibold text-foreground">Palpite do campeão</h2>
           <p className="mt-2 text-sm text-foreground/80">
-            Antes do fim da fase de grupos, escolha o <strong className="font-medium text-foreground">campeão</strong> e o{" "}
+            Escolha o <strong className="font-medium text-foreground">campeão</strong> e o{" "}
             <strong className="font-medium text-foreground">vice-campeão</strong> da Copa. Você pode alterar o palpite até{" "}
-            <strong className="font-medium text-foreground">10 minutos antes do fim estimado da última partida da fase de grupos</strong>{" "}
+            <strong className="font-medium text-foreground">1 minuto antes da primeira partida dos 16-avos</strong>{" "}
             (horário de Brasília). A pontuação só é contabilizada depois da final.
           </p>
           <ul className="mt-3 space-y-2 text-sm text-foreground/80">

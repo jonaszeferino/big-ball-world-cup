@@ -1,4 +1,4 @@
--- Palpite do campeão (campeão + vice). Prazo: 10 min antes do fim estimado da última partida da fase de grupos.
+-- Palpite do campeão (campeão + vice). Prazo: 1 min antes da 1ª partida dos 16-avos (round_of_32).
 -- Executar no SQL Editor do Supabase.
 
 create table if not exists public.champion_bets (
@@ -26,44 +26,54 @@ language sql
 stable
 set search_path = public
 as $$
-  select max(match_date) + interval '3 hours' - interval '10 minutes'
+  select min(match_date) - interval '1 minute'
   from public.matches
-  where stage = 'group';
+  where stage = 'round_of_32';
 $$;
 
-create or replace function public.prevent_champion_bet_after_deadline()
-returns trigger
+create or replace function public.upsert_champion_bet(
+  p_champion_team_id uuid,
+  p_runner_up_team_id uuid
+)
+returns void
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
   deadline timestamptz;
+  uid uuid := auth.uid();
 begin
+  if uid is null then
+    raise exception 'Não autenticado';
+  end if;
+
+  if p_champion_team_id = p_runner_up_team_id then
+    raise exception 'Campeão e vice devem ser times diferentes.';
+  end if;
+
+  if not exists (select 1 from public.teams where id = p_champion_team_id) then
+    raise exception 'Time inválido.';
+  end if;
+  if not exists (select 1 from public.teams where id = p_runner_up_team_id) then
+    raise exception 'Time inválido.';
+  end if;
+
   select public.champion_bet_deadline_at() into deadline;
-
-  if deadline is null then
-    return new;
+  if deadline is not null and now() > deadline then
+    raise exception 'Palpite do campeão encerrado (prazo expirado).';
   end if;
 
-  if now() <= deadline then
-    return new;
-  end if;
-
-  if tg_op = 'UPDATE'
-    and old.user_id is not distinct from new.user_id
-    and old.champion_team_id is not distinct from new.champion_team_id
-    and old.runner_up_team_id is not distinct from new.runner_up_team_id
-  then
-    return new;
-  end if;
-
-  raise exception 'Palpite do campeão encerrado (prazo expirado).';
+  insert into public.champion_bets (user_id, champion_team_id, runner_up_team_id, updated_at)
+  values (uid, p_champion_team_id, p_runner_up_team_id, now())
+  on conflict (user_id) do update set
+    champion_team_id = excluded.champion_team_id,
+    runner_up_team_id = excluded.runner_up_team_id,
+    updated_at = excluded.updated_at;
 end;
 $$;
 
-drop trigger if exists trg_champion_bets_prevent_after_deadline on public.champion_bets;
+revoke all on function public.upsert_champion_bet(uuid, uuid) from public;
+grant execute on function public.upsert_champion_bet(uuid, uuid) to authenticated;
 
-create trigger trg_champion_bets_prevent_after_deadline
-before insert or update on public.champion_bets
-for each row execute function public.prevent_champion_bet_after_deadline();
+drop trigger if exists trg_champion_bets_prevent_after_deadline on public.champion_bets;

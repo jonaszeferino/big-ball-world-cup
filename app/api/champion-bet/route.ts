@@ -117,20 +117,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Time inválido." }, { status: 400 })
   }
 
-  const { data: existing } = await supabase.from("champion_bets").select("id").eq("user_id", user.id).maybeSingle()
+  const { error: rpcErr } = await supabase.rpc("upsert_champion_bet", {
+    p_champion_team_id: championTeamId,
+    p_runner_up_team_id: runnerUpTeamId,
+  })
 
-  const payload = {
-    champion_team_id: championTeamId,
-    runner_up_team_id: runnerUpTeamId,
-    updated_at: new Date().toISOString(),
-  }
-
-  const write = existing?.id
-    ? await supabase.from("champion_bets").update(payload).eq("id", existing.id)
-    : await supabase.from("champion_bets").insert({ user_id: user.id, ...payload })
-
-  if (write.error) {
-    return NextResponse.json({ error: write.error.message }, { status: 500 })
+  if (rpcErr) {
+    const msg = rpcErr.message ?? "Erro ao salvar"
+    if (
+      msg.includes("Could not find the function") ||
+      (msg.includes("schema cache") && msg.includes("upsert_champion_bet"))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Atualização pendente no banco. Execute scripts/024_champion_bet_deadline_round_of_32.sql no SQL Editor do Supabase.",
+        },
+        { status: 503 },
+      )
+    }
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 
   return GET()

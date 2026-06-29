@@ -20,7 +20,7 @@ import { Check, Loader2, RotateCcw, Save } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { CountryFlag } from "@/components/country-flag"
-import { applyMatchResultAndUpdateBets, reopenMatchAndResetBets, matchesPenaltyColumnsMissingError } from "@/lib/match-result-scoring"
+import { applyMatchResultAndUpdateBets, reopenMatchAndResetBets } from "@/lib/match-result-scoring"
 import {
   getOfficialResultLetters,
   requiresPenaltyScores,
@@ -241,7 +241,7 @@ export function AdminOfficialResults() {
     }
   }
 
-  const validateBeforeWrite = (match: Match): string | null => {
+  const validateForCloseBolao = (match: Match): string | null => {
     const { homeGoals, awayGoals, homePens, awayPens } = readGoals(match)
     if (requiresPenaltyScores(match.stage, homeGoals, awayGoals)) {
       const v = validatePenaltyPair(homePens, awayPens)
@@ -252,12 +252,7 @@ export function AdminOfficialResults() {
 
   const handleSaveOfficialOnly = async (match: Match) => {
     setError(null)
-    const err = validateBeforeWrite(match)
-    if (err) {
-      setError(err)
-      return
-    }
-    const { homeGoals, awayGoals, homePens, awayPens } = readGoals(match)
+    const { homeGoals, awayGoals } = readGoals(match)
     const saved = savedByCode(resultCode(match))
     const prevHome = saved
       ? Math.max(0, Math.floor(Number(saved.goals_home)) || 0)
@@ -269,34 +264,11 @@ export function AdminOfficialResults() {
     setIsSubmitting(true)
     const supabase = createClient()
 
-    const { error: upErr } = await upsertTeamsResultsRow(supabase, match, homeGoals, awayGoals, homePens, awayPens)
+    const { error: upErr } = await upsertTeamsResultsRow(supabase, match, homeGoals, awayGoals)
     if (upErr) {
       setError(upErr)
       setIsSubmitting(false)
       return
-    }
-
-    const needPenUpdate = requiresPenaltyScores(match.stage, homeGoals, awayGoals)
-    if (needPenUpdate) {
-      const { error: penErr } = await supabase
-        .from("matches")
-        .update({
-          home_penalty_score: homePens,
-          away_penalty_score: awayPens,
-        })
-        .eq("id", match.id)
-
-      if (penErr) {
-        if (penErr.message && matchesPenaltyColumnsMissingError(penErr.message)) {
-          setError(
-            `${penErr.message} Para salvar pênaltis no mata-mata, rode no Supabase (SQL Editor) o arquivo scripts/005_match_penalties.sql.`,
-          )
-        } else {
-          setError(penErr.message)
-        }
-        setIsSubmitting(false)
-        return
-      }
     }
 
     if (prevHome !== homeGoals || prevAway !== awayGoals) {
@@ -321,7 +293,7 @@ export function AdminOfficialResults() {
 
   const handleCloseBolao = async (match: Match) => {
     setError(null)
-    const err = validateBeforeWrite(match)
+    const err = validateForCloseBolao(match)
     if (err) {
       setError(err)
       return
@@ -441,8 +413,8 @@ export function AdminOfficialResults() {
               <strong className="font-medium text-foreground">Tempo regular</strong> (mesmo depois de salvar o resultado) — você pode preencher antes ou
               depois, só não pode passar do número de <strong className="font-medium text-foreground">gols</strong> de cada time. Nas{" "}
               <strong className="font-medium text-foreground">fases eliminatórias</strong>, empate no tempo regulamentar exige placar de{" "}
-              <strong className="font-medium text-foreground">pênaltis</strong> com vencedor (o bolão continua pontuando só o resultado do tempo
-              regulamentar).
+              <strong className="font-medium text-foreground">pênaltis</strong> com vencedor ao{" "}
+              <strong className="font-medium text-foreground">encerrar no bolão</strong> (não ao salvar só o resultado oficial).
             </p>
         </CardHeader>
         <CardContent>
@@ -507,7 +479,7 @@ export function AdminOfficialResults() {
                         {showPens && (
                           <div className="flex w-full flex-col gap-1.5 pt-1">
                             <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              Penáltis (vencedor)
+                              Penáltis (vencedor · obrigatório ao encerrar)
                             </span>
                             <MatchScoreInputRow
                               size="compact"

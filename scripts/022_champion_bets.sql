@@ -1,4 +1,4 @@
--- Palpite do campeão (campeão + vice). Prazo: 2 dias após a referência da 1ª partida dos 16-avos.
+-- Palpite do campeão (campeão + vice). Prazo fixo: até 08/07/2026 23:59 (Brasília).
 -- Executar no SQL Editor do Supabase.
 
 create table if not exists public.champion_bets (
@@ -26,9 +26,7 @@ language sql
 stable
 set search_path = public
 as $$
-  select min(match_date) - interval '1 minute' + interval '2 days'
-  from public.matches
-  where stage = 'round_of_32';
+  select timezone('America/Sao_Paulo', timestamp '2026-07-08 23:59:59');
 $$;
 
 create or replace function public.upsert_champion_bet(

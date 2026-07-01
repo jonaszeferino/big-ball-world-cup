@@ -159,7 +159,11 @@ export function ChampionBetBar() {
             <Button type="button" variant="outline" size="sm" className="h-8 shrink-0" onClick={() => setEditing(true)}>
               Alterar
             </Button>
-          ) : null}
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              Prazo encerrado{deadlineLabel ? ` (${deadlineLabel})` : ""}
+            </span>
+          )}
         </div>
       </div>
     )
@@ -184,10 +188,8 @@ export function ChampionBetBar() {
             </p>
             <p className="mt-1 text-xs text-foreground/80">
               Escolha o campeão e o vice-campeão da Copa. Prazo:{" "}
-              <strong className="font-medium text-foreground">
-                2 dias após a primeira partida dos 16-avos
-              </strong>
-              {deadlineLabel ? ` (até ${deadlineLabel}, Brasília)` : ""}.{" "}
+              <strong className="font-medium text-foreground">08/07/2026 à meia-noite</strong>
+              {deadlineLabel ? ` (até ${deadlineLabel}, Brasília)` : " (horário de Brasília)"}.{" "}
               <Link href="/rules" className="font-medium text-primary underline-offset-2 hover:underline">
                 Ver regras
               </Link>

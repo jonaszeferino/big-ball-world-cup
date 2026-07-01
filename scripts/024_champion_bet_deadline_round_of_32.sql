@@ -1,4 +1,4 @@
--- Prazo do palpite do campeão: até 1 minuto antes da primeira partida dos 16-avos (round_of_32).
+-- Prazo do palpite do campeão: 2 dias após a referência da 1ª partida dos 16-avos (round_of_32).
 -- Executar no SQL Editor do Supabase (corrige "Palpite do campeão encerrado (prazo expirado).").
 
 create or replace function public.champion_bet_deadline_at()
@@ -7,7 +7,7 @@ language sql
 stable
 set search_path = public
 as $$
-  select min(match_date) - interval '1 minute'
+  select min(match_date) - interval '1 minute' + interval '2 days'
   from public.matches
   where stage = 'round_of_32';
 $$;

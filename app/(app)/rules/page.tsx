@@ -106,7 +106,7 @@ export default function RulesPage() {
           <p className="mt-2 text-sm text-foreground/80">
             Escolha o <strong className="font-medium text-foreground">campeão</strong> e o{" "}
             <strong className="font-medium text-foreground">vice-campeão</strong> da Copa. Você pode alterar o palpite até{" "}
-            <strong className="font-medium text-foreground">1 minuto antes da primeira partida dos 16-avos</strong>{" "}
+            <strong className="font-medium text-foreground">2 dias após a primeira partida dos 16-avos</strong>{" "}
             (horário de Brasília). A pontuação só é contabilizada depois da final.
           </p>
           <ul className="mt-3 space-y-2 text-sm text-foreground/80">

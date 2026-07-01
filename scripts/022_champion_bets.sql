@@ -1,4 +1,4 @@
--- Palpite do campeão (campeão + vice). Prazo: 1 min antes da 1ª partida dos 16-avos (round_of_32).
+-- Palpite do campeão (campeão + vice). Prazo: 2 dias após a referência da 1ª partida dos 16-avos.
 -- Executar no SQL Editor do Supabase.
 
 create table if not exists public.champion_bets (
@@ -26,7 +26,7 @@ language sql
 stable
 set search_path = public
 as $$
-  select min(match_date) - interval '1 minute'
+  select min(match_date) - interval '1 minute' + interval '2 days'
   from public.matches
   where stage = 'round_of_32';
 $$;

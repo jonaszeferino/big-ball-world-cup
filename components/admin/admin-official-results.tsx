@@ -16,7 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MatchScoreInputRow } from "@/components/admin/match-score-input-row"
 import { Badge } from "@/components/ui/badge"
-import { Check, Loader2, RotateCcw, Save } from "lucide-react"
+import { Check, Crown, Loader2, RotateCcw, Save } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { CountryFlag } from "@/components/country-flag"
@@ -103,6 +103,7 @@ export function AdminOfficialResults() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [championScoringMsg, setChampionScoringMsg] = useState<string | null>(null)
   const [reopenTarget, setReopenTarget] = useState<Match | null>(null)
 
   const loadMatches = useCallback(async () => {
@@ -350,6 +351,25 @@ export function AdminOfficialResults() {
     setReopenTarget(null)
   }
 
+  const handleReapplyChampionBets = async () => {
+    setError(null)
+    setChampionScoringMsg(null)
+    setIsSubmitting(true)
+    try {
+      const res = await fetch("/api/admin/champion-bet-scoring", { method: "POST" })
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) {
+        setError(json.error ?? "Erro ao pontuar palpite campeão")
+        return
+      }
+      setChampionScoringMsg("Pontos do palpite campeão recalculados. Confira o ranking.")
+    } catch {
+      setError("Erro de rede ao pontuar palpite campeão")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
@@ -361,6 +381,7 @@ export function AdminOfficialResults() {
 
   const openBolaoMatches = matches.filter((m) => m.status !== "finished")
   const closedBolaoMatches = matches.filter((m) => m.status === "finished")
+  const finishedFinalMatch = closedBolaoMatches.find((m) => m.stage === "final")
 
   return (
     <div className="flex flex-col gap-6">
@@ -402,6 +423,40 @@ export function AdminOfficialResults() {
           {error}
         </p>
       )}
+
+      {championScoringMsg ? (
+        <p className="text-sm text-emerald-800 dark:text-emerald-200 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+          {championScoringMsg}
+        </p>
+      ) : null}
+
+      {finishedFinalMatch ? (
+        <Card className="border-amber-500/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base text-card-foreground">
+              <Crown className="h-5 w-5 text-amber-600" />
+              Palpite campeão — pontuação
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              A final já está encerrada. Use este botão se os pontos do palpite campeão/vice não apareceram no ranking
+              (ex.: +15 para quem acertou o vice).
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              disabled={isSubmitting}
+              onClick={() => void handleReapplyChampionBets()}
+            >
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
+              Recalcular pontos do palpite campeão
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

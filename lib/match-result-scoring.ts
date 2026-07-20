@@ -297,54 +297,55 @@ export async function applyMatchResultAndUpdateBets(
     .select("id, user_id, predicted_home_score, predicted_away_score, predicted_advances_team_id, points_earned")
     .eq("match_id", matchId)
 
-  if (!bets?.length) return { error: null }
-
   const deltaByUser: Record<string, number> = {}
 
-  for (const bet of bets) {
-    const b = bet as {
-      id: string
-      user_id: string
-      predicted_home_score: number
-      predicted_away_score: number
-      predicted_advances_team_id: string | null
-      points_earned: number | null
+  if (bets?.length) {
+    for (const bet of bets) {
+      const b = bet as {
+        id: string
+        user_id: string
+        predicted_home_score: number
+        predicted_away_score: number
+        predicted_advances_team_id: string | null
+        points_earned: number | null
+      }
+      const oldPoints = b.points_earned ?? 0
+      const newPoints = calculateBetPoints(homeScore, awayScore, b.predicted_home_score, b.predicted_away_score, {
+        ...pointsCtxBase,
+        predictedAdvancesTeamId: b.predicted_advances_team_id,
+      })
+      const { error: betErr } = await supabase
+        .from("bets")
+        .update({ points_earned: newPoints })
+        .eq("id", b.id)
+      if (betErr) return { error: betErr.message }
+
+      const delta = newPoints - oldPoints
+      if (delta !== 0) {
+        deltaByUser[b.user_id] = (deltaByUser[b.user_id] ?? 0) + delta
+      }
     }
-    const oldPoints = b.points_earned ?? 0
-    const newPoints = calculateBetPoints(homeScore, awayScore, b.predicted_home_score, b.predicted_away_score, {
-      ...pointsCtxBase,
-      predictedAdvancesTeamId: b.predicted_advances_team_id,
-    })
-    const { error: betErr } = await supabase
-      .from("bets")
-      .update({ points_earned: newPoints })
-      .eq("id", b.id)
-    if (betErr) return { error: betErr.message }
 
-    const delta = newPoints - oldPoints
-    if (delta !== 0) {
-      deltaByUser[b.user_id] = (deltaByUser[b.user_id] ?? 0) + delta
-    }
-  }
-
-  for (const [userId, delta] of Object.entries(deltaByUser)) {
-    if (delta === 0) continue
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("total_points")
-      .eq("id", userId)
-      .single()
-
-    if (profile) {
-      const { error: profErr } = await supabase
+    for (const [userId, delta] of Object.entries(deltaByUser)) {
+      if (delta === 0) continue
+      const { data: profile } = await supabase
         .from("profiles")
-        .update({ total_points: profile.total_points + delta })
+        .select("total_points")
         .eq("id", userId)
-      if (profErr) return { error: profErr.message }
+        .single()
+
+      if (profile) {
+        const { error: profErr } = await supabase
+          .from("profiles")
+          .update({ total_points: profile.total_points + delta })
+          .eq("id", userId)
+        if (profErr) return { error: profErr.message }
+      }
     }
   }
 
-  if (stage === "final") {
+  const matchStage = matchRow.stage as string
+  if (matchStage === "final") {
     const { error: champErr } = await applyChampionBetScoringForFinal(
       supabase,
       matchId,

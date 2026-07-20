@@ -10,6 +10,7 @@ import {
   areChampionBetsPublic,
   formatCopaFinalScore,
   POINTS_CHAMPION,
+  POINTS_FINALIST,
   POINTS_RUNNER_UP,
   type ChampionBetPublicRow,
   type CopaFinalResult,
@@ -56,6 +57,9 @@ function OfficialCopaResultBanner({ result }: { result: CopaFinalResult }) {
 
       <p className="mt-3 text-sm text-muted-foreground">
         Placar da final: <strong className="font-medium text-foreground">{formatCopaFinalScore(result)}</strong>
+        {" · "}
+        Time na final, posição errada: <strong className="font-medium text-foreground">+{POINTS_FINALIST} pts</strong>{" "}
+        (por seleção).
       </p>
     </div>
   )
@@ -110,7 +114,7 @@ export function ChampionBetsRankingSection({
           Palpite campeão e vice
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Campeão +{POINTS_CHAMPION} · Vice +{POINTS_RUNNER_UP}.
+          Campeão +{POINTS_CHAMPION} · Vice +{POINTS_RUNNER_UP} · Finalista +{POINTS_FINALIST} (cada seleção).
           {!isPublic ? (
             <>
               {" "}

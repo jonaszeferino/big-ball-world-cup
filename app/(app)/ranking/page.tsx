@@ -14,10 +14,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import Link from "next/link"
-import { Loader2, Trophy, Medal, Award, Flag, Swords, Users, Target } from "lucide-react"
+import { Loader2, Users, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { ProfileNameWithStatus } from "@/components/profile-name-with-status"
+import { RankingWinnersSection } from "@/components/ranking-winners"
+import { BolaoChampionHero } from "@/components/bolao-champion-hero"
+import { ChampionBetsRankingSection } from "@/components/champion-bets-ranking"
 import { isGroupStage } from "@/lib/match-stage"
 import {
   KO_POINTS_EXACT,
@@ -25,6 +28,8 @@ import {
   POINTS_EXACT,
   POINTS_RESULT,
 } from "@/lib/match-result-scoring"
+import { buildTotalRankings, sortPlayersByTotal, entriesAtRank } from "@/lib/ranking-display"
+import { parseChampionBetRow, type ChampionBetPublicRow } from "@/lib/champion-bet-display"
 
 interface RankedPlayer {
   id: string
@@ -48,19 +53,13 @@ interface BetGroupOption {
 
 const RANKING_SCOPE_GERAL = "__geral__"
 
-function sortPlayers(a: RankedPlayer, b: RankedPlayer) {
-  if (b.total_points !== a.total_points) return b.total_points - a.total_points
-  if (b.exact_hits !== a.exact_hits) return b.exact_hits - a.exact_hits
-  if (b.result_hits !== a.result_hits) return b.result_hits - a.result_hits
-  return a.display_name.localeCompare(b.display_name)
-}
-
 export default function RankingPage() {
   const [players, setPlayers] = useState<RankedPlayer[]>([])
   const [groups, setGroups] = useState<BetGroupOption[]>([])
   const [rankingScope, setRankingScope] = useState<string>(RANKING_SCOPE_GERAL)
   const [myBetGroupId, setMyBetGroupId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [championBetRows, setChampionBetRows] = useState<ChampionBetPublicRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -125,6 +124,7 @@ export default function RankingPage() {
 
       if (!profiles?.length) {
         setPlayers([])
+        setChampionBetRows([])
         setLoading(false)
         return
       }
@@ -147,15 +147,33 @@ export default function RankingPage() {
       }
 
       let championPointsByUser = new Map<string, number>()
+      let championBetRowsBuilt: ChampionBetPublicRow[] = []
       const { data: championBets, error: championErr } = await supabase
         .from("champion_bets")
-        .select("user_id, points_earned")
+        .select(
+          "user_id, points_earned, champion_team:champion_team_id(id, name, code), runner_up_team:runner_up_team_id(id, name, code)",
+        )
 
       if (!championErr && championBets) {
         championPointsByUser = new Map(
           championBets.map((b) => [b.user_id as string, (b.points_earned as number) ?? 0]),
         )
+
+        const profileById = new Map(profiles.map((p) => [p.id, p]))
+        for (const raw of championBets) {
+          const parsed = parseChampionBetRow(raw as Record<string, unknown>)
+          if (!parsed) continue
+          const profile = profileById.get(raw.user_id as string)
+          if (!profile) continue
+          championBetRowsBuilt.push({
+            userId: profile.id,
+            displayName: profile.display_name,
+            statusMessage: (profile as { status_message?: string | null }).status_message ?? null,
+            ...parsed,
+          })
+        }
       }
+      setChampionBetRows(championBetRowsBuilt)
 
       const agg = new Map<
         string,
@@ -229,7 +247,7 @@ export default function RankingPage() {
         }
       })
 
-      playerStats.sort(sortPlayers)
+      playerStats.sort(sortPlayersByTotal)
       setPlayers(playerStats)
       setLoading(false)
     }
@@ -238,8 +256,10 @@ export default function RankingPage() {
 
   const displayPlayers = useMemo(() => {
     if (rankingScope === RANKING_SCOPE_GERAL) return players
-    return players.filter((p) => p.bet_group_id === rankingScope).sort(sortPlayers)
+    return players.filter((p) => p.bet_group_id === rankingScope).sort(sortPlayersByTotal)
   }, [players, rankingScope])
+
+  const rankedEntries = useMemo(() => buildTotalRankings(displayPlayers), [displayPlayers])
 
   const myGroup = useMemo(
     () => (myBetGroupId ? groups.find((g) => g.id === myBetGroupId) ?? null : null),
@@ -253,6 +273,22 @@ export default function RankingPage() {
 
   const selectedGroupName = selectedGroup?.name ?? null
 
+  const scopeLabel =
+    rankingScope === RANKING_SCOPE_GERAL
+      ? "Ranking geral"
+      : `Grupo ${selectedGroupName ?? "bolão"}`
+
+  const rankByPlayerId = useMemo(
+    () => new Map(rankedEntries.map((e) => [e.player.id, e.rank])),
+    [rankedEntries],
+  )
+
+  const playerIdsInScope = useMemo(() => new Set(displayPlayers.map((p) => p.id)), [displayPlayers])
+
+  const firstPlaceEntries = useMemo(() => entriesAtRank(rankedEntries, 1), [rankedEntries])
+  const bolaoChampion = firstPlaceEntries[0]?.player ?? null
+  const showBolaoChampionHero = bolaoChampion != null && bolaoChampion.total_points > 0
+
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -260,27 +296,6 @@ export default function RankingPage() {
       </div>
     )
   }
-
-  const podiumIcons = [
-    { icon: Trophy, colorClass: "text-accent" },
-    { icon: Medal, colorClass: "text-muted-foreground" },
-    { icon: Award, colorClass: "text-chart-4" },
-  ]
-
-  const byGroup = [...displayPlayers].sort((a, b) => {
-    if (b.group_points !== a.group_points) return b.group_points - a.group_points
-    if (b.exact_hits !== a.exact_hits) return b.exact_hits - a.exact_hits
-    return a.display_name.localeCompare(b.display_name)
-  })
-
-  const byKnockout = [...displayPlayers].sort((a, b) => {
-    if (b.knockout_points !== a.knockout_points) return b.knockout_points - a.knockout_points
-    if (b.exact_hits !== a.exact_hits) return b.exact_hits - a.exact_hits
-    return a.display_name.localeCompare(b.display_name)
-  })
-
-  const leaderGroup = byGroup[0]
-  const leaderKo = byKnockout[0]
 
   const scopeEmpty =
     rankingScope !== RANKING_SCOPE_GERAL && !players.some((p) => p.bet_group_id === rankingScope)
@@ -369,90 +384,28 @@ export default function RankingPage() {
         </Card>
       ) : (
         <>
-          {(leaderGroup && leaderGroup.group_points > 0) || (leaderKo && leaderKo.knockout_points > 0) ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {leaderGroup && leaderGroup.group_points > 0 && (
-                <Card className="border-primary/20 bg-primary/5">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
-                      <Flag className="h-5 w-5 text-primary" />
-                      Fase de grupos — líder
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-lg font-bold text-foreground">{leaderGroup.display_name}</p>
-                    {leaderGroup.status_message?.trim() ? (
-                      <p className="text-xs text-muted-foreground">{leaderGroup.status_message.trim()}</p>
-                    ) : null}
-                    <p className="text-2xl font-bold text-primary">{leaderGroup.group_points}</p>
-                    <p className="text-xs text-muted-foreground">pontos só em jogos de grupos</p>
-                  </CardContent>
-                </Card>
-              )}
-              {leaderKo && leaderKo.knockout_points > 0 && (
-                <Card className="border-secondary/30 bg-secondary/10">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
-                      <Swords className="h-5 w-5 text-secondary-foreground" />
-                      Mata-mata — líder
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-lg font-bold text-foreground">{leaderKo.display_name}</p>
-                    {leaderKo.status_message?.trim() ? (
-                      <p className="text-xs text-muted-foreground">{leaderKo.status_message.trim()}</p>
-                    ) : null}
-                    <p className="text-2xl font-bold text-primary">{leaderKo.knockout_points}</p>
-                    <p className="text-xs text-muted-foreground">pontos só em jogos eliminatórios</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+          {showBolaoChampionHero && bolaoChampion ? (
+            <BolaoChampionHero winner={bolaoChampion} scopeLabel={scopeLabel} />
           ) : null}
 
-          {displayPlayers.length > 0 && (
-            <div className="grid gap-4 sm:grid-cols-3">
-              {displayPlayers.slice(0, 3).map((player, i) => {
-                const podium = podiumIcons[i]
-                const Icon = podium.icon
-                return (
-                  <Card
-                    key={player.id}
-                    className={cn("text-center", player.id === currentUserId && "ring-2 ring-primary/30")}
-                  >
-                    <CardContent className="flex flex-col items-center gap-2 p-6">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                        <Icon className={cn("h-6 w-6", podium.colorClass)} />
-                      </div>
-                      <span className="text-lg font-bold text-card-foreground">{player.display_name}</span>
-                      {player.status_message?.trim() ? (
-                        <p className="max-w-full truncate px-2 text-xs text-muted-foreground" title={player.status_message.trim()}>
-                          {player.status_message.trim()}
-                        </p>
-                      ) : null}
-                      <span className="text-3xl font-bold text-primary">{player.total_points}</span>
-                      <span className="text-xs text-muted-foreground">pontos totais</span>
-                      <div className="flex flex-wrap justify-center gap-1">
-                        <Badge variant="outline" className="border-border text-xs text-muted-foreground">
-                          G {player.group_points}
-                        </Badge>
-                        <Badge variant="outline" className="border-border text-xs text-muted-foreground">
-                          KO {player.knockout_points}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
+          <RankingWinnersSection
+            players={displayPlayers}
+            scopeLabel={scopeLabel}
+            currentUserId={currentUserId}
+          />
+
+          <ChampionBetsRankingSection
+            rows={championBetRows}
+            playerIdsInScope={playerIdsInScope}
+            currentUserId={currentUserId}
+          />
 
           <Card>
             <CardHeader>
               <CardTitle className="text-card-foreground">
                 {rankingScope === RANKING_SCOPE_GERAL
-                  ? "Classificacao geral"
-                  : `Classificacao — ${selectedGroupName ?? "grupo"}`}
+                  ? "Classificação geral"
+                  : `Classificação — ${selectedGroupName ?? "grupo"}`}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -485,15 +438,33 @@ export default function RankingPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {displayPlayers.map((player, i) => (
+                      {displayPlayers.map((player) => {
+                        const rank = rankByPlayerId.get(player.id) ?? 0
+                        return (
                         <tr
                           key={player.id}
                           className={cn(
                             "border-b border-border last:border-0",
                             player.id === currentUserId && "bg-primary/5",
+                            rank === 1 && "bg-amber-500/5",
                           )}
                         >
-                          <td className="py-3 text-left font-medium text-foreground">{i + 1}</td>
+                          <td className="py-3 text-left font-medium text-foreground">
+                            <span className="inline-flex items-center gap-1.5 tabular-nums">
+                              {rank}º
+                              {rank <= 3 ? (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "px-1 py-0 text-[9px] font-semibold uppercase",
+                                    rank === 1 && "border-amber-400/60 text-amber-800 dark:text-amber-200",
+                                  )}
+                                >
+                                  pódio
+                                </Badge>
+                              ) : null}
+                            </span>
+                          </td>
                           <td className="py-3 text-left">
                             <ProfileNameWithStatus
                               name={player.display_name}
@@ -501,7 +472,7 @@ export default function RankingPage() {
                               nameClassName={player.id === currentUserId ? "text-primary" : undefined}
                               suffix={
                                 player.id === currentUserId ? (
-                                  <span className="text-xs font-normal text-muted-foreground">(voce)</span>
+                                  <span className="text-xs font-normal text-muted-foreground">(você)</span>
                                 ) : undefined
                               }
                             />
@@ -514,7 +485,7 @@ export default function RankingPage() {
                           <td className="py-3 text-center text-muted-foreground">{player.advance_hits}</td>
                           <td className="py-3 text-right font-bold text-primary">{player.total_points}</td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                   <p className="mt-3 text-xs text-muted-foreground">

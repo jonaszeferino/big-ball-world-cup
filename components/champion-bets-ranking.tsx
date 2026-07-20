@@ -1,18 +1,69 @@
 "use client"
 
-import { Crown, Lock, Trophy } from "lucide-react"
+import { Crown, Lock, Medal, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CountryFlag } from "@/components/country-flag"
 import { ProfileNameWithStatus } from "@/components/profile-name-with-status"
 import { cn } from "@/lib/utils"
 import {
+  areChampionBetsPublic,
+  formatCopaFinalScore,
   POINTS_CHAMPION,
   POINTS_FINALIST,
   POINTS_RUNNER_UP,
-} from "@/lib/champion-bet-scoring"
-import { areChampionBetsPublic, type ChampionBetPublicRow } from "@/lib/champion-bet-display"
+  type ChampionBetPublicRow,
+  type CopaFinalResult,
+} from "@/lib/champion-bet-display"
 import { formatChampionBetDeadlineLabel } from "@/lib/champion-bet-deadline"
+
+function OfficialCopaResultBanner({ result }: { result: CopaFinalResult }) {
+  return (
+    <div className="mb-6 rounded-xl border border-amber-400/35 bg-gradient-to-br from-amber-500/15 via-background to-emerald-500/10 p-4 sm:p-5">
+      <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+        <Trophy className="h-4 w-4" />
+        Resultado oficial da Copa — palpite campeão
+      </p>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-2 rounded-lg border border-amber-400/30 bg-background/60 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Campeão</p>
+          <div className="flex min-w-0 items-center gap-2">
+            <CountryFlag countryName={result.championTeam.name} size="md" />
+            <div className="min-w-0">
+              <p className="truncate font-bold text-foreground">{result.championTeam.name}</p>
+              <p className="text-sm text-muted-foreground">{result.championTeam.code}</p>
+            </div>
+          </div>
+          <Badge className="w-fit bg-amber-500/90 font-bold tabular-nums text-amber-950 hover:bg-amber-500/90">
+            +{POINTS_CHAMPION} pts quem acertou
+          </Badge>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-2 rounded-lg border border-slate-400/25 bg-background/60 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Vice-campeão</p>
+          <div className="flex min-w-0 items-center gap-2">
+            <CountryFlag countryName={result.runnerUpTeam.name} size="md" />
+            <div className="min-w-0">
+              <p className="truncate font-bold text-foreground">{result.runnerUpTeam.name}</p>
+              <p className="text-sm text-muted-foreground">{result.runnerUpTeam.code}</p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="w-fit font-bold tabular-nums">
+            +{POINTS_RUNNER_UP} pts quem acertou
+          </Badge>
+        </div>
+      </div>
+
+      <p className="mt-3 text-sm text-muted-foreground">
+        Placar da final: <strong className="font-medium text-foreground">{formatCopaFinalScore(result)}</strong>
+        {" · "}
+        Time na final, posição errada: <strong className="font-medium text-foreground">+{POINTS_FINALIST} pts</strong>{" "}
+        (por seleção).
+      </p>
+    </div>
+  )
+}
 
 function TeamPick({
   team,
@@ -37,10 +88,12 @@ export function ChampionBetsRankingSection({
   rows,
   playerIdsInScope,
   currentUserId,
+  officialResult,
 }: {
   rows: ChampionBetPublicRow[]
   playerIdsInScope: Set<string>
   currentUserId: string | null
+  officialResult: CopaFinalResult | null
 }) {
   const isPublic = areChampionBetsPublic()
   const scopedRows = rows
@@ -72,6 +125,18 @@ export function ChampionBetsRankingSection({
         </p>
       </CardHeader>
       <CardContent className="pt-0">
+        {officialResult ? (
+          <OfficialCopaResultBanner result={officialResult} />
+        ) : (
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-dashed border-border/80 bg-muted/15 px-4 py-4 text-sm text-muted-foreground">
+            <Medal className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              Campeão e vice oficiais da Copa (e a pontuação do palpite) aparecem aqui quando a{" "}
+              <strong className="font-medium text-foreground">final</strong> for encerrada no bolão.
+            </p>
+          </div>
+        )}
+
         {!isPublic ? (
           <div className="flex items-start gap-3 rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
             <Lock className="mt-0.5 h-4 w-4 shrink-0" />
@@ -142,7 +207,9 @@ export function ChampionBetsRankingSection({
             <p className="mt-3 text-xs text-muted-foreground">
               {withBet} palpite{withBet === 1 ? "" : "s"} neste âmbito
               {withoutBet > 0 ? ` · ${withoutBet} participante${withoutBet === 1 ? "" : "s"} sem palpite` : ""}.
-              Pontos do palpite entram no total após o encerramento da final no bolão.
+              {officialResult
+                ? " Pontos já contabilizados conforme o resultado oficial acima."
+                : " Pontos do palpite entram no total após o encerramento da final no bolão."}
             </p>
           </div>
         )}

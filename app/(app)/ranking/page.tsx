@@ -29,7 +29,7 @@ import {
   POINTS_RESULT,
 } from "@/lib/match-result-scoring"
 import { buildTotalRankings, sortPlayersByTotal, entriesAtRank } from "@/lib/ranking-display"
-import { parseChampionBetRow, type ChampionBetPublicRow } from "@/lib/champion-bet-display"
+import { parseChampionBetRow, resolveCopaFinalResult, type ChampionBetPublicRow, type CopaFinalResult } from "@/lib/champion-bet-display"
 
 interface RankedPlayer {
   id: string
@@ -60,6 +60,7 @@ export default function RankingPage() {
   const [myBetGroupId, setMyBetGroupId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [championBetRows, setChampionBetRows] = useState<ChampionBetPublicRow[]>([])
+  const [copaFinalResult, setCopaFinalResult] = useState<CopaFinalResult | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -125,6 +126,7 @@ export default function RankingPage() {
       if (!profiles?.length) {
         setPlayers([])
         setChampionBetRows([])
+        setCopaFinalResult(null)
         setLoading(false)
         return
       }
@@ -148,11 +150,38 @@ export default function RankingPage() {
 
       let championPointsByUser = new Map<string, number>()
       let championBetRowsBuilt: ChampionBetPublicRow[] = []
-      const { data: championBets, error: championErr } = await supabase
-        .from("champion_bets")
-        .select(
-          "user_id, points_earned, champion_team:champion_team_id(id, name, code), runner_up_team:runner_up_team_id(id, name, code)",
-        )
+
+      const [championBetsRes, finalMatchRes] = await Promise.all([
+        supabase
+          .from("champion_bets")
+          .select(
+            "user_id, points_earned, champion_team:champion_team_id(id, name, code), runner_up_team:runner_up_team_id(id, name, code)",
+          ),
+        supabase
+          .from("matches")
+          .select(
+            "status, stage, home_score, away_score, home_penalty_score, away_penalty_score, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)",
+          )
+          .eq("stage", "final")
+          .maybeSingle(),
+      ])
+
+      const championBets = championBetsRes.data
+      const championErr = championBetsRes.error
+      let finalMatchRow = finalMatchRes.data
+
+      if (finalMatchRes.error?.message.includes("penalty_score")) {
+        const fallbackFinal = await supabase
+          .from("matches")
+          .select(
+            "status, stage, home_score, away_score, home_team:home_team_id(id, name, code), away_team:away_team_id(id, name, code)",
+          )
+          .eq("stage", "final")
+          .maybeSingle()
+        finalMatchRow = fallbackFinal.data
+      }
+
+      setCopaFinalResult(resolveCopaFinalResult(finalMatchRow))
 
       if (!championErr && championBets) {
         championPointsByUser = new Map(
@@ -398,6 +427,7 @@ export default function RankingPage() {
             rows={championBetRows}
             playerIdsInScope={playerIdsInScope}
             currentUserId={currentUserId}
+            officialResult={copaFinalResult}
           />
 
           <Card>
